@@ -37,3 +37,11 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Variáveis de ambiente (chaves de API)
+.env
+.env.*
+!.env.example
+
+# PWA (gerado pelo vite-plugin-pwa em desenvolvimento)
+dev-dist
