@@ -1,11 +1,26 @@
-<template>
-  <h1 class="p-4 text-2xl font-bold text-green-600">SmartPantry</h1>
-  <main>
-    <h1>SmartPantry Dashboard</h1>
-    <BarcodeScanner />
-  </main>
-</template>
-
 <script setup>
-import BarcodeScanner from '../components/BarcodeScanner.vue'
+import { ref } from 'vue'
+import { lookupProduct } from '@/services/productsApi'
+import { searchRecipes } from '@/services/recipesApi'
+
+const result = ref(null)
+
+async function testProduct() {
+  result.value = await lookupProduct('3017620422003')
+}
+
+async function testRecipes() {
+  result.value = await searchRecipes(['eggs', 'tomato', 'cheese'], {
+    diets: ['vegetarian'],
+    allergies: ['peanut'],
+    excludedIngredients: ['mushroom'],
+  })
+}
 </script>
+
+<template>
+  <h1>SmartPantry</h1>
+  <button @click="testProduct">Testar produto</button>
+  <button @click="testRecipes">Testar receitas</button>
+  <pre>{{ result }}</pre>
+</template>
