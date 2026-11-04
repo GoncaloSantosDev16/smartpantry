@@ -87,4 +87,25 @@ describe("profiles store", () => {
 
     expect(toArray).toHaveBeenCalledTimes(1);
   });
+  
+  it("só um perfil fica default mesmo com criação em simultâneo", async () => {
+    const store = useProfilesStore();
+    await Promise.all([
+      store.createProfile(data),
+      store.createProfile({ ...data, name: "Outro" }),
+    ]);
+    const saved = await db.profiles.toArray();
+    expect(saved).toHaveLength(2);
+    expect(saved.filter((p) => p.isDefault)).toHaveLength(1);
+  });
+
+  it("o perfil sobrevive a um novo arranque da app", async () => {
+    await useProfilesStore().createProfile(data);
+
+    setActivePinia(createPinia());
+    const fresh = useProfilesStore();
+    await fresh.load();
+
+    expect(fresh.defaultProfile.name).toBe("Casa");
+  });
 });

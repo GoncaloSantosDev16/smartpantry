@@ -55,4 +55,20 @@ describe('db', () => {
 
     expect(soon.map((i) => i.name)).toEqual(['Leite'])
   })
+
+  it('encontra o perfil default e os itens marcados filtrando em JS', async () => {
+    await db.profiles.bulkAdd([
+      { name: 'A', isDefault: true },
+      { name: 'B', isDefault: false },
+    ])
+    const defaults = await db.profiles.filter((p) => p.isDefault).toArray()
+    expect(defaults.map((p) => p.name)).toEqual(['A'])
+
+    await db.shoppingItems.bulkAdd([
+      { name: 'Leite', checked: true },
+      { name: 'Pão', checked: false },
+    ])
+    const checked = await db.shoppingItems.filter((i) => i.checked).toArray()
+    expect(checked.map((i) => i.name)).toEqual(['Leite'])
+  })
 })

@@ -38,10 +38,14 @@ export const useProfilesStore = defineStore("profiles", {
     },
 
     async createProfile(data) {
-      const isDefault = this.profiles.length === 0;
-      const profile = { ...data, isDefault };
-      const id = await db.profiles.add(profile);
-      this.profiles.push({ ...profile, id });
+      const profile = await db.transaction("rw", db.profiles, async () => {
+        const isDefault = (await db.profiles.count()) === 0;
+        const toSave = { ...data, isDefault };
+        const id = await db.profiles.add(toSave);
+        return { ...toSave, id };
+      });
+      this.profiles.push(profile);
+      return profile;
     },
   },
 });
