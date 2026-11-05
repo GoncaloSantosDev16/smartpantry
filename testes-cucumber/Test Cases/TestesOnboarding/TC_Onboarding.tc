@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description></description>
+   <name>TC_Onboarding</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>570dc2ed-ada5-424c-b2ad-6d5afb7cb22a</testCaseGuid>
+</TestCaseEntity>
