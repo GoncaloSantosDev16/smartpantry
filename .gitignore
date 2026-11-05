@@ -45,3 +45,14 @@ __screenshots__/
 
 # PWA (gerado pelo vite-plugin-pwa em desenvolvimento)
 dev-dist
+
+/testes-cucumber/bin/
+/testes-cucumber/Libs/
+/testes-cucumber/Reports/
+/testes-cucumber/.settings/
+/testes-cucumber/**/TempTestCase*
+/testes-cucumber/**/*.class
+
+/testes-cucumber/Object Repository/**/*.rs
+/testes-cucumber/Test Cases/**/*.tc
+/testes-cucumber/Libs/**/*.groovy
