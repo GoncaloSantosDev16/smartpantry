@@ -300,6 +300,5 @@
 	<classpathentry kind="lib" path="C:/Users/Geral/Downloads/Katalon_Studio_Windows_64-11.0.0/Katalon_Studio_Windows_64-11.0.0/plugins/org.testng_7.8.0.jar"/>
 	<classpathentry kind="lib" path="C:/Users/Geral/Downloads/Katalon_Studio_Windows_64-11.0.0/Katalon_Studio_Windows_64-11.0.0/plugins/com.beust.jcommander_1.82.0.jar"/>
 	<classpathentry kind="con" path="GROOVY_SUPPORT"/>
-	<classpathentry kind="con" path="GROOVY_DSL_SUPPORT"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
