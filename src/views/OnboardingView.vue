@@ -8,6 +8,7 @@ const router = useRouter()
 const profiles = useProfilesStore()
 const step = ref(1)
 const totalSteps = 3
+const saving = ref(false)
 
 const DIETS = [
   { value: 'vegetarian', label: 'Vegetariano' },
@@ -29,14 +30,20 @@ const canContinue = computed(() => {
 })
 
 async function finish() {
-  await profiles.createProfile({
-    name: form.name.trim(),
-    servings: form.servings,
-    diets: [...form.diets],
-    allergies: [...form.allergies],
-    excludedIngredients: [...form.excludedIngredients],
-  })
-  router.push({ name: 'home' })
+  if (saving.value) return
+  saving.value = true
+  try {
+    await profiles.createProfile({
+      name: form.name.trim(),
+      servings: form.servings,
+      diets: [...form.diets],
+      allergies: [...form.allergies],
+      excludedIngredients: [...form.excludedIngredients],
+    })
+    router.push({ name: 'home' })
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 
@@ -133,14 +140,15 @@ async function finish() {
         Continuar
       </button>
       <button
-        v-else
-        type="button"
-        data-testid="onboarding-finish"
-        class="flex-1 rounded-lg bg-green-600 py-3 text-white"
-        @click="finish"
-      >
-        Concluir
-      </button>
+  v-else
+  type="button"
+  data-testid="onboarding-finish"
+  class="flex-1 rounded-lg bg-green-600 py-3 text-white disabled:opacity-50"
+  :disabled="saving"
+  @click="finish"
+>
+  Concluir
+</button>
     </footer>
   </main>
 </template>

@@ -10,3 +10,9 @@ db.version(1).stores({
   recipes: '++id, externalId, source',
   collections: '++id, &name',
 })
+
+// booleanos não são indexáveis no IndexedDB: removemos esses índices
+db.version(2).stores({
+  profiles: '++id',
+  shoppingItems: '++id, name',
+})
