@@ -1,12 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue' // <-- Adicionado onMounted
+import { ref, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
 import BarcodeScanner from '@/components/BarcodeScanner.vue' 
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
-
-// 1. IMPORTAR A TUA BASE DE DADOS
-// (Ajusta o caminho se o teu index.js do Dexie não estiver na pasta db)
 import { db } from '@/db'
 
 // --- ESTADOS DA DESPENSA ---
@@ -19,24 +16,36 @@ const newItemUnit = ref('un')
 const newItemCategory = ref('Other')
 const formErrors = ref({}) 
 
+// NOVO: Estado para controlar a edição (US-04)
+const editingId = ref(null)
+
 // --- ESTADOS DAS APIs ---
 const result = ref(null)
 const productId = ref('') 
 const isLoading = ref(false)
 
-// 2. CARREGAR OS DADOS QUANDO A PÁGINA ABRE
+// CARREGAR OS DADOS (US-04 - Listar)
 onMounted(async () => {
   try {
-    // Vai buscar todos os itens à tabela pantryItems do Dexie
     pantryItems.value = await db.pantryItems.toArray()
   } catch (error) {
     console.error("Erro ao carregar a despensa:", error)
   }
 })
 
-// --- LÓGICA DE ADICIONAR (US-03) ---
+// --- LÓGICA DO FORMULÁRIO (US-03 Adicionar & US-04 Editar) ---
 function toggleScanner() {
   isScannerOpen.value = !isScannerOpen.value
+}
+
+// NOVO: Função para limpar o formulário e resetar estados
+function resetForm() {
+  newItemName.value = ''
+  newItemQty.value = 1
+  newItemUnit.value = 'un'
+  newItemCategory.value = 'Other'
+  editingId.value = null
+  formErrors.value = {}
 }
 
 async function handleAddItem() {
@@ -48,34 +57,57 @@ async function handleAddItem() {
   }
 
   const errors = validateItem(itemToValidate)
-  
   if (Object.keys(errors).length > 0) {
     formErrors.value = errors
     return
   }
-  
   formErrors.value = {}
   
   try {
-    // 3. GUARDAR NA BASE DE DADOS (DEXIE)
-    // O Dexie gera o ID automaticamente e devolve-o
-    const generatedId = await db.pantryItems.add(itemToValidate)
+    if (editingId.value) {
+      // US-04: ATUALIZAR ITEM EXISTENTE
+      await db.pantryItems.update(editingId.value, itemToValidate)
+      
+      // Atualizar a interface
+      const index = pantryItems.value.findIndex(i => i.id === editingId.value)
+      if (index !== -1) {
+        pantryItems.value[index] = { id: editingId.value, ...itemToValidate }
+      }
+    } else {
+      // US-03: ADICIONAR NOVO ITEM
+      const generatedId = await db.pantryItems.add(itemToValidate)
+      pantryItems.value.push({ id: generatedId, ...itemToValidate })
+    }
     
-    // Atualiza a lista visual com o ID verdadeiro da base de dados
-    pantryItems.value.push({
-      id: generatedId,
-      ...itemToValidate
-    })
-    
-    // Limpa o formulário
-    newItemName.value = ''
-    newItemQty.value = 1
-    newItemUnit.value = 'un'
-    newItemCategory.value = 'Other'
-
+    resetForm()
   } catch (error) {
     console.error("Erro ao guardar o item:", error)
     alert("Houve um erro ao guardar o produto na base de dados.")
+  }
+}
+
+// --- LÓGICA DE EDITAR E REMOVER (US-04) ---
+
+// Iniciar edição
+function startEdit(item) {
+  editingId.value = item.id
+  newItemName.value = item.name
+  newItemQty.value = item.quantity
+  newItemUnit.value = item.unit
+  newItemCategory.value = item.category
+  
+  // Fazer scroll para o formulário no topo suavemente
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// Remover item
+async function removeItem(id) {
+  try {
+    await db.pantryItems.delete(id)
+    pantryItems.value = pantryItems.value.filter(item => item.id !== id)
+  } catch (error) {
+    console.error("Erro ao remover o item:", error)
+    alert("Houve um erro ao remover o produto.")
   }
 }
 
@@ -88,7 +120,6 @@ async function handleScan(barcode) {
     result.value = apiResult;
     
     const apiProduct = apiResult?.product || {};
-    
     newItemName.value = apiProduct.product_name || `Produto (${barcode})`;
     
     if (apiProduct.quantity) {
@@ -100,8 +131,9 @@ async function handleScan(barcode) {
     if (apiProduct.categories) {
       newItemCategory.value = guessCategory(apiProduct.categories, ['Dairy', 'Beverages', 'Other']); 
     }
-
-    // Chama o adicionar (que agora é assíncrono porque vai à base de dados)
+    
+    // Assegurar que não estamos em modo de edição ao adicionar via scanner
+    editingId.value = null;
     await handleAddItem();
   } catch (error) {
     alert("Erro ao procurar o produto lido pela câmara.");
@@ -117,11 +149,9 @@ async function testProduct() {
   result.value = null;
   try { 
     result.value = await lookupProduct(productId.value); 
-  } 
-  catch (error) { 
+  } catch (error) { 
     result.value = { erro: "Falha ao procurar produto." }; 
-  } 
-  finally { 
+  } finally { 
     isLoading.value = false; 
   }
 }
@@ -135,11 +165,9 @@ async function testRecipes() {
       allergies: ['peanut'],
       excludedIngredients: ['mushroom'],
     }); 
-  } 
-  catch (error) { 
+  } catch (error) { 
     result.value = { erro: "Falha ao procurar receitas." }; 
-  } 
-  finally { 
+  } finally { 
     isLoading.value = false; 
   }
 }
@@ -149,20 +177,20 @@ async function testRecipes() {
   <div class="app-container">
     <header class="main-header">
       <h1>🛒 SmartPantry</h1>
-      <p class="subtitle">Adiciona itens à tua despensa & Testa a API</p>
+      <p class="subtitle">Adiciona, Edita e Remove itens da tua despensa</p>
     </header>
 
     <main class="content-wrapper">
-      <!-- ZONA 1: ADICIONAR À DESPENSA -->
+      <!-- ZONA 1: FORMULÁRIO DE ADICIONAR / EDITAR -->
       <section class="card pantry-card">
         <div class="card-header">
-          <h2>📦 Novo Ingrediente</h2>
-          <button @click="toggleScanner" class="btn-icon" :class="{ 'active': isScannerOpen }" title="Ler Código de Barras">
+          <h2>{{ editingId ? '✏️ Editar Ingrediente' : '📦 Novo Ingrediente' }}</h2>
+          <button v-if="!editingId" @click="toggleScanner" class="btn-icon" :class="{ 'active': isScannerOpen }" title="Ler Código de Barras">
             📷
           </button>
         </div>
         
-        <div v-if="isScannerOpen" class="scanner-wrapper">
+        <div v-if="isScannerOpen && !editingId" class="scanner-wrapper">
           <BarcodeScanner @scanned="handleScan" />
         </div>
 
@@ -200,14 +228,18 @@ async function testRecipes() {
               <span v-if="formErrors.unit" class="error-text">{{ formErrors.unit }}</span>
             </div>
 
-            <div class="form-group button-group">
-              <button type="submit" class="btn-primary">Adicionar Item</button>
+            <!-- Botões dinâmicos consoante estejas a adicionar ou editar -->
+            <div class="form-group button-group flex-buttons">
+              <button v-if="editingId" type="button" class="btn-secondary" @click="resetForm">Cancelar</button>
+              <button type="submit" class="btn-primary" :class="{ 'btn-update': editingId }">
+                {{ editingId ? 'Guardar' : 'Adicionar' }}
+              </button>
             </div>
           </div>
         </form>
       </section>
 
-      <!-- ZONA 2: LISTA DA DESPENSA (Sem botão remover) -->
+      <!-- ZONA 2: LISTA DA DESPENSA -->
       <section class="card list-card">
         <h2>📋 A Minha Despensa</h2>
         <ul class="pantry-list">
@@ -215,15 +247,22 @@ async function testRecipes() {
             <div class="empty-icon">🍽️</div>
             A tua despensa está vazia. Adiciona produtos acima.
           </li>
-          <li v-for="item in pantryItems" :key="item.id" class="pantry-item">
+          
+          <li v-for="item in pantryItems" :key="item.id" class="pantry-item" :class="{ 'is-editing': editingId === item.id }">
             <div class="item-main">
               <strong class="item-name">{{ item.name }}</strong>
               <span class="category-tag">
                 {{ item.category === 'Dairy' ? '🧀 Laticínios' : item.category === 'Beverages' ? '🥤 Bebidas' : '📦 Outro' }}
               </span>
             </div>
-            <div class="item-meta">
+            
+            <!-- Nova estrutura com quantidade e botões de ação (Editar/Remover) -->
+            <div class="item-actions">
               <span class="qty-badge">{{ item.quantity }} {{ item.unit }}</span>
+              <div class="action-buttons">
+                <button @click="startEdit(item)" class="btn-action edit" title="Editar Item">✏️</button>
+                <button @click="removeItem(item.id)" class="btn-action delete" title="Remover Item">🗑️</button>
+              </div>
             </div>
           </li>
         </ul>
@@ -260,8 +299,7 @@ async function testRecipes() {
 </template>
 
 <style scoped>
-/* O CSS MANTEVE-SE EXATAMENTE IGUAL AO ANTERIOR - Podes colar os teus estilos aqui sem alterar nada */
-/* CORES E VARIÁVEIS */
+/* CORES E VARIÁVEIS (Mantidas do original) */
 :root {
   --primary: #42b883;
   --primary-dark: #33a06f;
@@ -271,6 +309,7 @@ async function testRecipes() {
   --text-muted: #7f8c8d;
   --border-color: #e2e8f0;
   --error: #e74c3c;
+  --warning: #f39c12;
 }
 
 /* LAYOUT GLOBAL */
@@ -392,6 +431,12 @@ async function testRecipes() {
   padding-top: 1.8rem;
 }
 
+.flex-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
 label {
   font-size: 0.85rem;
   font-weight: 600;
@@ -439,12 +484,37 @@ input.has-error, select.has-error {
   cursor: pointer;
   transition: all 0.2s;
   height: 45px;
+  flex: 1;
 }
 
 .btn-primary:hover {
   background-color: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(66, 184, 131, 0.2);
+}
+
+.btn-update {
+  background-color: var(--warning);
+}
+.btn-update:hover {
+  background-color: #e67e22;
+  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.2);
+}
+
+.btn-secondary {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid var(--border-color);
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  height: 45px;
+}
+.btn-secondary:hover {
+  background-color: #e2e8f0;
 }
 
 /* SCANNER WRAPPER */
@@ -456,7 +526,7 @@ input.has-error, select.has-error {
   background-color: #f0fdf4;
 }
 
-/* LISTA DA DESPENSA */
+/* LISTA DA DESPENSA & AÇÕES (US-04) */
 .pantry-list {
   list-style: none;
   padding: 0;
@@ -474,12 +544,17 @@ input.has-error, select.has-error {
   background: #f8fafc;
   border-radius: 12px;
   border: 1px solid var(--border-color);
-  transition: transform 0.2s;
+  transition: all 0.2s;
 }
 
 .pantry-item:hover {
-  transform: translateX(4px);
   border-color: #cbd5e1;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+}
+
+.pantry-item.is-editing {
+  border-color: var(--warning);
+  background: #fffcf5;
 }
 
 .item-main {
@@ -502,6 +577,12 @@ input.has-error, select.has-error {
   font-weight: 500;
 }
 
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .qty-badge {
   background: var(--primary);
   color: white;
@@ -510,6 +591,39 @@ input.has-error, select.has-error {
   font-size: 0.9rem;
   font-weight: 700;
   box-shadow: 0 2px 4px rgba(66, 184, 131, 0.2);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.btn-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.4rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-action.edit:hover { background: #e0f2fe; }
+.btn-action.delete:hover { background: #fee2e2; }
+
+@media (max-width: 500px) {
+  .pantry-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .item-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 .empty-msg {
