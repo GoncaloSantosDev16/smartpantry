@@ -17,25 +17,7 @@ import com.kms.katalon.core.windows.keyword.WindowsBuiltinKeywords as Windows
 import internal.GlobalVariable as GlobalVariable
 import org.openqa.selenium.Keys as Keys
 
-WebUI.openBrowser('')
+import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberBuiltInKeywords
 
-WebUI.navigateToUrl('http://localhost:5173/')
-
-WebUI.click(findTestObject('Page_Vite App/button_Continuar'))
-
-WebUI.click(findTestObject('Page_Vite App/label_Pescetariano'))
-
-WebUI.click(findTestObject('Page_Vite App/button_Continuar'))
-
-WebUI.setText(findTestObject('Page_Vite App/input_Ingredientes excludos'), 'a')
-
-WebUI.click(findTestObject('Page_Vite App/button_Concluir'))
-
-WebUI.click(findTestObject('Page_Vite App/button_Adicionar Item'))
-
-WebUI.click(findTestObject('Page_Vite App/span_O nome  obrigatrio'))
-
-WebUI.verifyElementText(findTestObject('Page_Vite App/span_O nome  obrigatrio'), 'O nome é obrigatório.')
-
-WebUI.closeBrowser()
-
+// Executa diretamente o ficheiro Gherkin da despensa
+CucumberBuiltInKeywords.runFeatureFile("Include/features/AdicionarDespensa.feature")
