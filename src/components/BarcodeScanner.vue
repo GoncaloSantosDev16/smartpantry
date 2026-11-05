@@ -32,13 +32,16 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from "vue";
+import { ref, onUnmounted, defineEmits } from "vue";
 import { BarcodeDetector } from "barcode-detector";
 import {
   descreverErroCamara,
   descreverErroLeitor,
   verificarAmbiente,
 } from "@/services/cameraErrors";
+
+// Declara o evento para enviar o código para o HomeView.vue
+const emit = defineEmits(['scanned']);
 
 const video = ref(null);
 const scanResult = ref(null);
@@ -116,8 +119,12 @@ const startScanner = async () => {
       const barcodes = await detector.detect(video.value);
       falhasSeguidas = 0;
       if (barcodes.length > 0) {
-        scanResult.value = barcodes[0].rawValue;
+        const detectedCode = barcodes[0].rawValue;
+        scanResult.value = detectedCode;
         stopScanner();
+        
+        // Emite o evento para que o HomeView.vue receba o código e adicione à despensa
+        emit('scanned', detectedCode); 
       }
     } catch (err) {
       falhasSeguidas += 1;

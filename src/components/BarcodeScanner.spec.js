@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import BarcodeScanner from "./BarcodeScanner.vue";
 import { CODIGOS, descrever } from "@/services/cameraErrors";
+import { ref, onUnmounted, defineEmits } from "vue";
 
 // O leitor real carrega WebAssembly; aqui só interessa o caminho dos erros.
 vi.mock("barcode-detector", () => ({
@@ -11,6 +12,7 @@ vi.mock("barcode-detector", () => ({
     }
   },
 }));
+const emit = defineEmits(['scanned']);
 
 function erroDom(name) {
   const erro = new Error(name);
