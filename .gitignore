@@ -56,3 +56,9 @@ dev-dist
 /testes-cucumber/Object Repository/**/*.rs
 /testes-cucumber/Test Cases/**/*.tc
 /testes-cucumber/Libs/**/*.groovy
+
+
+# Ignorar arquivos temporários, de projeto e relatórios do Katalon
+/testes-cucumber/.project
+/testes-cucumber/*.prj
+/testes-cucumber/Reports/
