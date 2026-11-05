@@ -1,0 +1,150 @@
+<script setup>
+// US-03: formulário para adicionar um item à despensa.
+// Não fala com a base de dados: emite 'save' com o item pronto, e a vista guarda-o.
+import { reactive, ref } from 'vue'
+import { lookupProduct } from '../services/productsApi'
+import { UNITS, guessCategory, parseQuantity, validateItem } from '../services/pantryHelpers'
+
+const props = defineProps({
+  // Categorias disponíveis (ex.: ['Dairy', 'Beverages', ...])
+  categories: { type: Array, required: true },
+})
+const emit = defineEmits(['save', 'close'])
+
+const form = reactive({
+  name: '',
+  category: '',
+  quantity: 1,
+  unit: 'un',
+  expiresOn: '',
+})
+const barcode = ref('')
+const errors = ref({})
+const lookupMessage = ref('')
+const loading = ref(false)
+
+// Pré-preencher a partir do código de barras (API de produtos)
+async function onLookup() {
+  lookupMessage.value = ''
+  const code = barcode.value.trim()
+  if (!/^\d{8,14}$/.test(code)) {
+    lookupMessage.value = 'O código deve ter entre 8 e 14 dígitos.'
+    return
+  }
+  loading.value = true
+  const result = await lookupProduct(code)
+  loading.value = false
+
+  if (result.status === 'found') {
+    const p = result.product
+    form.name = p.brand ? `${p.name} (${p.brand})` : p.name
+    form.category = guessCategory(p.category, props.categories)
+    const q = parseQuantity(p.quantity)
+    if (q.quantity) form.quantity = q.quantity
+    if (q.unit) form.unit = q.unit
+    lookupMessage.value = 'Dados preenchidos. Confirma e ajusta antes de guardar.'
+  } else if (result.status === 'not-found') {
+    lookupMessage.value = 'Produto não encontrado. Preenche os dados manualmente.'
+  } else {
+    lookupMessage.value = `Não foi possível consultar a API (${result.message}). Preenche manualmente.`
+  }
+}
+
+function onSubmit() {
+  errors.value = validateItem(form)
+  if (Object.keys(errors.value).length > 0) return
+  emit('save', {
+    name: form.name.trim(),
+    category: form.category,
+    quantity: Number(form.quantity),
+    unit: form.unit,
+    expiresOn: form.expiresOn || undefined, // YYYY-MM-DD, opcional
+  })
+}
+</script>
+
+<template>
+  <div class="modal-backdrop" data-testid="add-item-modal">
+    <form class="modal" @submit.prevent="onSubmit">
+      <h2>Adicionar item</h2>
+
+      <label>
+        Código de barras (opcional)
+        <div class="row">
+          <input v-model="barcode" data-testid="item-barcode" inputmode="numeric" placeholder="ex.: 3017620422003" />
+          <button type="button" data-testid="item-barcode-search" :disabled="loading" @click="onLookup">
+            {{ loading ? 'A procurar…' : 'Procurar' }}
+          </button>
+        </div>
+      </label>
+      <p v-if="lookupMessage" data-testid="item-lookup-message">{{ lookupMessage }}</p>
+
+      <label>
+        Nome
+        <input v-model="form.name" data-testid="item-name" />
+      </label>
+      <p v-if="errors.name" role="alert" data-testid="item-error-name" class="error">{{ errors.name }}</p>
+
+      <label>
+        Categoria
+        <select v-model="form.category" data-testid="item-category">
+          <option value="" disabled>Escolher…</option>
+          <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+        </select>
+      </label>
+      <p v-if="errors.category" role="alert" data-testid="item-error-category" class="error">{{ errors.category }}</p>
+
+      <div class="row">
+        <label>
+          Quantidade
+          <input v-model.number="form.quantity" data-testid="item-quantity" type="number" step="any" />
+        </label>
+        <label>
+          Unidade
+          <select v-model="form.unit" data-testid="item-unit">
+            <option v-for="u in UNITS" :key="u" :value="u">{{ u }}</option>
+          </select>
+        </label>
+      </div>
+      <p v-if="errors.quantity" role="alert" data-testid="item-error-quantity" class="error">{{ errors.quantity }}</p>
+
+      <label>
+        Validade (opcional)
+        <input v-model="form.expiresOn" data-testid="item-expiry" type="date" />
+      </label>
+      <p v-if="errors.expiresOn" role="alert" class="error">{{ errors.expiresOn }}</p>
+
+      <div class="row">
+        <button type="button" data-testid="item-cancel" @click="emit('close')">Cancelar</button>
+        <button type="submit" data-testid="item-save">Guardar</button>
+      </div>
+    </form>
+  </div>
+</template>
+
+<style scoped>
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal {
+  background: #fff;
+  width: 100%;
+  max-width: 430px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+label { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+input, select { padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+.row { display: flex; gap: 8px; align-items: flex-end; }
+.error { color: #c62828; margin: 0; }
+</style>
