@@ -6,12 +6,11 @@
    <UUID>6c603127-fa03-4675-b817-18ddf18e4eb0</UUID>
    <createdEdition>ENTERPRISE</createdEdition>
    <createdVersion>11.0.0</createdVersion>
-   <freeLicense>true</freeLicense>
+   <freeLicense>false</freeLicense>
    <migratedVersion>5.9.0</migratedVersion>
    <modifiedEdition>ENTERPRISE</modifiedEdition>
-   <modifiedVersion>11.0.0</modifiedVersion>
+   <modifiedVersion>11.6.0</modifiedVersion>
    <pageLoadTimeout>0</pageLoadTimeout>
-   <projectFileLocation>C:\Users\bruno\Desktop\Uni\Tópicos Avançados de Engenharia de Software\Projeto\smartpantry\testes-cucumber\smartpantry.prj</projectFileLocation>
    <sourceContent>
       <sourceFolderList>
          <sourceFolderConfiguration>
