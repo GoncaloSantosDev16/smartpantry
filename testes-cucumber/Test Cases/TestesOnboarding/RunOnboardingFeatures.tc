@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <TestCaseEntity>
    <description></description>
-   <name>TC_Onboarding</name>
+   <name>RunOnboardingFeatures</name>
    <tag></tag>
    <comment></comment>
    <recordOption>OTHER</recordOption>
-   <testCaseGuid>570dc2ed-ada5-424c-b2ad-6d5afb7cb22a</testCaseGuid>
+   <testCaseGuid>b0cb24f0-8791-4969-b60f-a78a0f2831fe</testCaseGuid>
 </TestCaseEntity>
