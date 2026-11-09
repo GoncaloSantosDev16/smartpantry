@@ -1,23 +1,14 @@
 # smartpantry
 
-This template should help get you started developing with Vue 3 in Vite.
+Mobile-first web application developed for intelligent pantry management, food waste reduction, and meal planning, ensuring full offline-first functionality.
 
-## Recommended IDE Setup
+## Technologies Used
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+* **Frontend:** Vue.js 3, Vite, Pinia
+* **Styling:** Tailwind CSS (Mobile-First)
+* **Data Persistence:** Dexie.js (IndexedDB for offline-first support)
+* **Automated Testing:** Katalon Studio (BDD with Gherkin and Groovy)
 
-## Recommended Browser Setup
-
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
 
 ## Project Setup
 
@@ -36,3 +27,7 @@ npm run dev
 ```sh
 npm run build
 ```
+
+### Add API Key
+
+add VITE_SPOONACULAR_KEY in .env.local
