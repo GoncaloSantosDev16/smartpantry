@@ -174,556 +174,123 @@ async function testRecipes() {
 </script>
 
 <template>
-  <div class="app-container">
-    <header class="main-header">
-      <h1>🛒 SmartPantry</h1>
-      <p class="subtitle">Adiciona, Edita e Remove itens da tua despensa</p>
+  <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans">
+    <header class="text-center mb-10">
+      <h1 class="text-4xl font-extrabold text-[#42b883] mb-2 tracking-tight">🛒 SmartPantry</h1>
+      <p class="text-gray-500 text-lg">Adiciona itens à tua despensa & Testa a API</p>
     </header>
 
-    <main class="content-wrapper">
-      <!-- ZONA 1: FORMULÁRIO DE ADICIONAR / EDITAR -->
-      <section class="card pantry-card">
-        <div class="card-header">
-          <h2>{{ editingId ? '✏️ Editar Ingrediente' : '📦 Novo Ingrediente' }}</h2>
-          <button v-if="!editingId" @click="toggleScanner" class="btn-icon" :class="{ 'active': isScannerOpen }" title="Ler Código de Barras">
+    <main class="flex flex-col gap-8">
+      <!-- ZONA 1: ADICIONAR À DESPENSA -->
+      <section class="card">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-800 m-0">📦 Novo Ingrediente</h2>
+          <button 
+            @click="toggleScanner" 
+            :class="[
+              'p-2 text-xl bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-200 hover:-translate-y-0.5 transition-all', 
+              isScannerOpen ? 'bg-[#42b883] border-[#42b883] text-white animate-pulse shadow-[0_0_0_4px_rgba(66,184,131,0.2)]' : ''
+            ]" 
+            title="Ler Código de Barras"
+          >
             📷
           </button>
         </div>
         
-        <div v-if="isScannerOpen && !editingId" class="scanner-wrapper">
+        <div v-if="isScannerOpen" class="mb-6 border-2 border-dashed border-[#42b883] rounded-xl p-4 bg-green-50">
           <BarcodeScanner @scanned="handleScan" />
         </div>
 
-        <form @submit.prevent="handleAddItem" class="modern-form">
-          <div class="form-row">
-            <div class="form-group flex-2">
-              <label>Produto</label>
+        <form @submit.prevent="handleAddItem" class="flex flex-col gap-5">
+          <div class="flex flex-col sm:flex-row gap-4 items-start">
+            <div class="flex flex-col gap-1.5 w-full sm:flex-[2]">
+              <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</label>
               <input v-model="newItemName" type="text" placeholder="Ex: Arroz agulha..." :class="{ 'has-error': formErrors.name }" />
-              <span v-if="formErrors.name" class="error-text">{{ formErrors.name }}</span>
+              <span v-if="formErrors.name" class="text-xs font-medium text-red-500">{{ formErrors.name }}</span>
             </div>
             
-            <div class="form-group flex-1">
-              <label>Categoria</label>
+            <div class="flex flex-col gap-1.5 w-full sm:flex-1">
+              <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoria</label>
               <select v-model="newItemCategory" :class="{ 'has-error': formErrors.category }">
                 <option value="Dairy">Laticínios</option>
                 <option value="Beverages">Bebidas</option>
                 <option value="Other">Outro</option>
               </select>
-              <span v-if="formErrors.category" class="error-text">{{ formErrors.category }}</span>
+              <span v-if="formErrors.category" class="text-xs font-medium text-red-500">{{ formErrors.category }}</span>
             </div>
           </div>
           
-          <div class="form-row">
-            <div class="form-group flex-1">
-              <label>Quantidade</label>
+          <div class="flex flex-col sm:flex-row gap-4 items-start">
+            <div class="flex flex-col gap-1.5 w-full sm:flex-1">
+              <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantidade</label>
               <input v-model="newItemQty" type="number" min="0.1" step="0.1" :class="{ 'has-error': formErrors.quantity }" />
-              <span v-if="formErrors.quantity" class="error-text">{{ formErrors.quantity }}</span>
+              <span v-if="formErrors.quantity" class="text-xs font-medium text-red-500">{{ formErrors.quantity }}</span>
             </div>
             
-            <div class="form-group flex-1">
-              <label>Unidade</label>
+            <div class="flex flex-col gap-1.5 w-full sm:flex-1">
+              <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Unidade</label>
               <select v-model="newItemUnit" :class="{ 'has-error': formErrors.unit }">
                 <option v-for="u in UNITS" :key="u" :value="u">{{ u }}</option>
               </select>
-              <span v-if="formErrors.unit" class="error-text">{{ formErrors.unit }}</span>
+              <span v-if="formErrors.unit" class="text-xs font-medium text-red-500">{{ formErrors.unit }}</span>
             </div>
 
-            <!-- Botões dinâmicos consoante estejas a adicionar ou editar -->
-            <div class="form-group button-group flex-buttons">
-              <button v-if="editingId" type="button" class="btn-secondary" @click="resetForm">Cancelar</button>
-              <button type="submit" class="btn-primary" :class="{ 'btn-update': editingId }">
-                {{ editingId ? 'Guardar' : 'Adicionar' }}
-              </button>
+            <div class="flex justify-end w-full sm:flex-1 sm:pt-6">
+              <button type="submit" class="btn-primary w-full sm:w-auto">Adicionar Item</button>
             </div>
           </div>
         </form>
       </section>
 
       <!-- ZONA 2: LISTA DA DESPENSA -->
-      <section class="card list-card">
-        <h2>📋 A Minha Despensa</h2>
-        <ul class="pantry-list">
-          <li v-if="pantryItems.length === 0" class="empty-msg">
-            <div class="empty-icon">🍽️</div>
+      <section class="card">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">📋 A Minha Despensa</h2>
+        <ul class="flex flex-col gap-3 m-0 p-0 list-none">
+          <li v-if="pantryItems.length === 0" class="text-center text-gray-500 py-12 px-4 bg-slate-50 rounded-xl border-2 border-dashed border-gray-200">
+            <div class="text-4xl mb-2 opacity-50">🍽️</div>
             A tua despensa está vazia. Adiciona produtos acima.
           </li>
-          
-          <li v-for="item in pantryItems" :key="item.id" class="pantry-item" :class="{ 'is-editing': editingId === item.id }">
-            <div class="item-main">
-              <strong class="item-name">{{ item.name }}</strong>
-              <span class="category-tag">
+          <li v-for="item in pantryItems" :key="item.id" class="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-gray-200 hover:translate-x-1 hover:border-slate-300 transition-transform">
+            <div class="flex items-center gap-4">
+              <strong class="text-lg font-semibold">{{ item.name }}</strong>
+              <span class="text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600 font-medium">
                 {{ item.category === 'Dairy' ? '🧀 Laticínios' : item.category === 'Beverages' ? '🥤 Bebidas' : '📦 Outro' }}
               </span>
             </div>
-            
-            <!-- Nova estrutura com quantidade e botões de ação (Editar/Remover) -->
-            <div class="item-actions">
-              <span class="qty-badge">{{ item.quantity }} {{ item.unit }}</span>
-              <div class="action-buttons">
-                <button @click="startEdit(item)" class="btn-action edit" title="Editar Item">✏️</button>
-                <button @click="removeItem(item.id)" class="btn-action delete" title="Remover Item">🗑️</button>
-              </div>
+            <div>
+              <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">{{ item.quantity }} {{ item.unit }}</span>
             </div>
           </li>
         </ul>
       </section>
 
       <!-- ZONA 3: TESTES DA API -->
-      <div class="api-grid">
-        <section class="card api-card">
-          <h2>🔍 Testar Produto (API)</h2>
-          <div class="input-group">
-            <input v-model="productId" type="text" placeholder="Ex: 3017620422003" />
-            <button class="btn-api" @click="testProduct" :disabled="isLoading">Procurar</button>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section class="card">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">🔍 Testar Produto (API)</h2>
+          <div class="flex gap-2">
+            <input v-model="productId" type="text" placeholder="Ex: 3017620422003" class="w-full flex-1" />
+            <button class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" @click="testProduct" :disabled="isLoading">Procurar</button>
           </div>
         </section>
 
-        <section class="card api-card">
-          <h2>🍳 Testar Receitas (API)</h2>
-          <button class="btn-api btn-full" @click="testRecipes" :disabled="isLoading">
+        <section class="card">
+          <h2 class="text-xl font-bold text-gray-800 mb-4">🍳 Testar Receitas (API)</h2>
+          <button class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" @click="testRecipes" :disabled="isLoading">
             Procurar Receitas (Ovos, Tomate, Queijo)
           </button>
         </section>
       </div>
 
       <!-- ZONA 4: CONSOLA DE RESULTADOS DA API -->
-      <section class="result-area" v-if="isLoading || result">
-        <div class="result-header">
-          <h2>💻 Consola da API</h2>
+      <section class="bg-gray-900 rounded-xl overflow-hidden shadow-lg mt-2" v-if="isLoading || result">
+        <div class="bg-gray-800 p-4 border-b border-gray-700">
+          <h2 class="text-white text-lg font-bold m-0">💻 Consola da API</h2>
         </div>
-        <div v-if="isLoading" class="loading">A carregar os dados...</div>
-        <pre v-else class="json-viewer">{{ result }}</pre>
+        <div v-if="isLoading" class="p-8 text-center text-[#42b883] font-bold">A carregar os dados...</div>
+        <pre v-else class="m-0 p-6 text-green-400 font-mono text-sm whitespace-pre-wrap break-words max-h-[500px] overflow-y-auto">{{ result }}</pre>
       </section>
     </main>
   </div>
 </template>
 
-<style scoped>
-/* CORES E VARIÁVEIS (Mantidas do original) */
-:root {
-  --primary: #42b883;
-  --primary-dark: #33a06f;
-  --bg-color: #f4f7f6;
-  --card-bg: #ffffff;
-  --text-main: #2c3e50;
-  --text-muted: #7f8c8d;
-  --border-color: #e2e8f0;
-  --error: #e74c3c;
-  --warning: #f39c12;
-}
-
-/* LAYOUT GLOBAL */
-.app-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-  font-family: 'Inter', system-ui, sans-serif;
-  color: var(--text-main);
-}
-
-.main-header {
-  text-align: center;
-  margin-bottom: 2.5rem;
-}
-
-.main-header h1 {
-  font-size: 2.5rem;
-  color: var(--primary);
-  margin: 0 0 0.5rem 0;
-  font-weight: 800;
-  letter-spacing: -1px;
-}
-
-.subtitle {
-  color: var(--text-muted);
-  font-size: 1.1rem;
-  margin: 0;
-}
-
-.content-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-/* CARTÕES */
-.card {
-  background: var(--card-bg);
-  border-radius: 16px;
-  padding: 2rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-  border: 1px solid var(--border-color);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.card h2 {
-  margin: 0;
-  font-size: 1.4rem;
-  color: var(--text-main);
-}
-
-/* BOTÃO CÂMARA */
-.btn-icon {
-  background: #f8f9fa;
-  border: 1px solid var(--border-color);
-  font-size: 1.2rem;
-  padding: 0.6rem;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-icon:hover {
-  background: #e2e8f0;
-  transform: translateY(-2px);
-}
-
-.btn-icon.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(66, 184, 131, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(66, 184, 131, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(66, 184, 131, 0); }
-}
-
-/* FORMULÁRIO */
-.modern-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-}
-
-.form-row {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-@media (max-width: 600px) {
-  .form-row {
-    flex-direction: column;
-  }
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.flex-1 { flex: 1; width: 100%; }
-.flex-2 { flex: 2; width: 100%; }
-
-.button-group {
-  justify-content: flex-end;
-  height: 100%;
-  padding-top: 1.8rem;
-}
-
-.flex-buttons {
-  display: flex;
-  flex-direction: row;
-  gap: 0.5rem;
-}
-
-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-input, select {
-  padding: 0.8rem 1rem;
-  border: 2px solid var(--border-color);
-  border-radius: 10px;
-  font-size: 1rem;
-  transition: all 0.2s;
-  background-color: #fafafa;
-  color: var(--text-main);
-}
-
-input:focus, select:focus {
-  outline: none;
-  border-color: var(--primary);
-  background-color: #fff;
-  box-shadow: 0 0 0 3px rgba(66, 184, 131, 0.1);
-}
-
-input.has-error, select.has-error {
-  border-color: var(--error);
-  background-color: #fdf2f2;
-}
-
-.error-text {
-  color: var(--error);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.btn-primary {
-  background-color: var(--primary);
-  color: white;
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  height: 45px;
-  flex: 1;
-}
-
-.btn-primary:hover {
-  background-color: var(--primary-dark);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.2);
-}
-
-.btn-update {
-  background-color: var(--warning);
-}
-.btn-update:hover {
-  background-color: #e67e22;
-  box-shadow: 0 4px 12px rgba(243, 156, 18, 0.2);
-}
-
-.btn-secondary {
-  background-color: #f1f5f9;
-  color: #475569;
-  border: 1px solid var(--border-color);
-  padding: 0.8rem 1rem;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  height: 45px;
-}
-.btn-secondary:hover {
-  background-color: #e2e8f0;
-}
-
-/* SCANNER WRAPPER */
-.scanner-wrapper {
-  margin-bottom: 1.5rem;
-  border: 2px dashed var(--primary);
-  border-radius: 12px;
-  padding: 15px;
-  background-color: #f0fdf4;
-}
-
-/* LISTA DA DESPENSA & AÇÕES (US-04) */
-.pantry-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.pantry-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.2rem;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  transition: all 0.2s;
-}
-
-.pantry-item:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-}
-
-.pantry-item.is-editing {
-  border-color: var(--warning);
-  background: #fffcf5;
-}
-
-.item-main {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.item-name {
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.category-tag {
-  font-size: 0.75rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 20px;
-  background: #e2e8f0;
-  color: #475569;
-  font-weight: 500;
-}
-
-.item-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.qty-badge {
-  background: var(--primary);
-  color: white;
-  padding: 0.4rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  box-shadow: 0 2px 4px rgba(66, 184, 131, 0.2);
-}
-
-.action-buttons {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.btn-action {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.1rem;
-  padding: 0.4rem;
-  border-radius: 6px;
-  transition: background 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-action.edit:hover { background: #e0f2fe; }
-.btn-action.delete:hover { background: #fee2e2; }
-
-@media (max-width: 500px) {
-  .pantry-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  .item-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-}
-
-.empty-msg {
-  text-align: center;
-  color: var(--text-muted);
-  padding: 3rem 1rem;
-  background: #f8fafc;
-  border-radius: 12px;
-  border: 2px dashed var(--border-color);
-}
-
-.empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  opacity: 0.5;
-}
-
-/* ESTILOS PARA API TOOLS */
-.api-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-
-@media (max-width: 768px) {
-  .api-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.api-card h2 {
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
-}
-
-.input-group {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.btn-api {
-  background-color: #35495e;
-  color: white;
-  border: none;
-  padding: 0.8rem 1.2rem;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btn-api:hover:not(:disabled) {
-  background-color: #2c3e50;
-}
-
-.btn-api:disabled {
-  background-color: #95a5a6;
-  cursor: not-allowed;
-}
-
-.btn-full {
-  width: 100%;
-}
-
-/* CONSOLA DE RESULTADOS */
-.result-area {
-  background: #1e1e1e;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-}
-
-.result-header {
-  background: #2d2d2d;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #444;
-}
-
-.result-header h2 {
-  margin: 0;
-  color: #fff;
-  font-size: 1.1rem;
-}
-
-.loading {
-  padding: 2rem;
-  text-align: center;
-  color: var(--primary);
-  font-weight: bold;
-}
-
-.json-viewer {
-  margin: 0;
-  padding: 1.5rem;
-  color: #a6e22e;
-  font-family: 'Fira Code', monospace;
-  font-size: 0.95rem;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  max-height: 500px;
-  overflow-y: auto;
-}
-</style>

@@ -1,29 +1,44 @@
 <template>
-  <div class="scanner-container">
-    <h2>Leitor de Código de Barras</h2>
+  <div class="flex flex-col items-center p-5 w-full">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Leitor de Código de Barras</h2>
 
-    <div class="video-wrapper" v-show="isScanning">
-      <video ref="video" autoplay playsinline muted></video>
+    <div class="w-full max-w-md mb-5 rounded-lg overflow-hidden bg-black shadow-lg" v-show="isScanning">
+      <video ref="video" class="w-full block" autoplay playsinline muted></video>
     </div>
 
-    <div class="controls">
-      <button @click="startScanner" v-if="!isScanning">Iniciar Câmara</button>
-      <button @click="stopScanner" v-if="isScanning">Parar Câmara</button>
+    <div class="flex gap-4">
+      <button 
+        @click="startScanner" 
+        v-if="!isScanning"
+        class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow"
+      >
+        Iniciar Câmara
+      </button>
+      
+      <button 
+        @click="stopScanner" 
+        v-if="isScanning"
+        class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg transition-colors shadow"
+      >
+        Parar Câmara
+      </button>
     </div>
 
-    <div v-if="scanResult" class="result">
-      <h3>Produto Encontrado:</h3>
-      <p><strong>Código:</strong> {{ scanResult }}</p>
+    <div v-if="scanResult" class="mt-5 p-4 bg-green-50 border-2 border-green-500 rounded-lg w-full max-w-md text-center shadow-sm">
+      <h3 class="text-lg font-bold text-green-800 mb-1">Produto Encontrado:</h3>
+      <p class="text-green-900 font-mono text-lg">{{ scanResult }}</p>
     </div>
 
-    <div v-if="erro" class="error" role="alert" data-testid="erro-camara">
-      <h3>{{ erro.titulo }}</h3>
-      <p>{{ erro.mensagem }}</p>
-      <p class="como-resolver">{{ erro.comoResolver }}</p>
+    <div v-if="erro" class="mt-5 p-4 bg-red-50 border-2 border-red-500 rounded-lg w-full max-w-md text-center shadow-sm" role="alert" data-testid="erro-camara">
+      <h3 class="text-lg font-bold text-red-800 mb-2">{{ erro.titulo }}</h3>
+      <p class="text-red-700 mb-1">{{ erro.mensagem }}</p>
+      <p class="text-sm text-red-600 opacity-90 mb-4">{{ erro.comoResolver }}</p>
+      
       <button
         v-if="erro.podeTentarDeNovo"
         @click="startScanner"
         data-testid="tentar-de-novo"
+        class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded transition-colors"
       >
         Tentar novamente
       </button>
@@ -158,77 +173,3 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
-.scanner-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-}
-
-.video-wrapper {
-  width: 100%;
-  max-width: 480px;
-  margin-bottom: 20px;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #000;
-}
-
-video {
-  width: 100%;
-  display: block;
-}
-
-.controls button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.result {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #e8f5e9;
-  border: 1px solid #4caf50;
-  border-radius: 4px;
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-}
-
-.error {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #fdecea;
-  border: 1px solid #d32f2f;
-  border-radius: 4px;
-  width: 100%;
-  max-width: 400px;
-  text-align: center;
-  color: #611a15;
-}
-
-.error h3 {
-  margin: 0 0 8px;
-}
-
-.error .como-resolver {
-  font-size: 14px;
-  opacity: 0.85;
-}
-
-.error button {
-  margin-top: 10px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  background-color: #d32f2f;
-  color: white;
-  cursor: pointer;
-}
-</style>
