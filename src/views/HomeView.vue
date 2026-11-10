@@ -1,12 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue' // <-- Adicionado onMounted
+import { ref, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
 import BarcodeScanner from '@/components/BarcodeScanner.vue' 
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
-
-// 1. IMPORTAR A TUA BASE DE DADOS
-// (Ajusta o caminho se o teu index.js do Dexie não estiver na pasta db)
 import { db } from '@/db'
 
 // --- ESTADOS DA DESPENSA ---
@@ -19,24 +16,36 @@ const newItemUnit = ref('un')
 const newItemCategory = ref('Other')
 const formErrors = ref({}) 
 
+// NOVO: Estado para controlar a edição (US-04)
+const editingId = ref(null)
+
 // --- ESTADOS DAS APIs ---
 const result = ref(null)
 const productId = ref('') 
 const isLoading = ref(false)
 
-// 2. CARREGAR OS DADOS QUANDO A PÁGINA ABRE
+// CARREGAR OS DADOS (US-04 - Listar)
 onMounted(async () => {
   try {
-    // Vai buscar todos os itens à tabela pantryItems do Dexie
     pantryItems.value = await db.pantryItems.toArray()
   } catch (error) {
     console.error("Erro ao carregar a despensa:", error)
   }
 })
 
-// --- LÓGICA DE ADICIONAR (US-03) ---
+// --- LÓGICA DO FORMULÁRIO (US-03 Adicionar & US-04 Editar) ---
 function toggleScanner() {
   isScannerOpen.value = !isScannerOpen.value
+}
+
+// NOVO: Função para limpar o formulário e resetar estados
+function resetForm() {
+  newItemName.value = ''
+  newItemQty.value = 1
+  newItemUnit.value = 'un'
+  newItemCategory.value = 'Other'
+  editingId.value = null
+  formErrors.value = {}
 }
 
 async function handleAddItem() {
@@ -48,34 +57,57 @@ async function handleAddItem() {
   }
 
   const errors = validateItem(itemToValidate)
-  
   if (Object.keys(errors).length > 0) {
     formErrors.value = errors
     return
   }
-  
   formErrors.value = {}
   
   try {
-    // 3. GUARDAR NA BASE DE DADOS (DEXIE)
-    // O Dexie gera o ID automaticamente e devolve-o
-    const generatedId = await db.pantryItems.add(itemToValidate)
+    if (editingId.value) {
+      // US-04: ATUALIZAR ITEM EXISTENTE
+      await db.pantryItems.update(editingId.value, itemToValidate)
+      
+      // Atualizar a interface
+      const index = pantryItems.value.findIndex(i => i.id === editingId.value)
+      if (index !== -1) {
+        pantryItems.value[index] = { id: editingId.value, ...itemToValidate }
+      }
+    } else {
+      // US-03: ADICIONAR NOVO ITEM
+      const generatedId = await db.pantryItems.add(itemToValidate)
+      pantryItems.value.push({ id: generatedId, ...itemToValidate })
+    }
     
-    // Atualiza a lista visual com o ID verdadeiro da base de dados
-    pantryItems.value.push({
-      id: generatedId,
-      ...itemToValidate
-    })
-    
-    // Limpa o formulário
-    newItemName.value = ''
-    newItemQty.value = 1
-    newItemUnit.value = 'un'
-    newItemCategory.value = 'Other'
-
+    resetForm()
   } catch (error) {
     console.error("Erro ao guardar o item:", error)
     alert("Houve um erro ao guardar o produto na base de dados.")
+  }
+}
+
+// --- LÓGICA DE EDITAR E REMOVER (US-04) ---
+
+// Iniciar edição
+function startEdit(item) {
+  editingId.value = item.id
+  newItemName.value = item.name
+  newItemQty.value = item.quantity
+  newItemUnit.value = item.unit
+  newItemCategory.value = item.category
+  
+  // Fazer scroll para o formulário no topo suavemente
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// Remover item
+async function removeItem(id) {
+  try {
+    await db.pantryItems.delete(id)
+    pantryItems.value = pantryItems.value.filter(item => item.id !== id)
+  } catch (error) {
+    console.error("Erro ao remover o item:", error)
+    alert("Houve um erro ao remover o produto.")
   }
 }
 
@@ -88,7 +120,6 @@ async function handleScan(barcode) {
     result.value = apiResult;
     
     const apiProduct = apiResult?.product || {};
-    
     newItemName.value = apiProduct.product_name || `Produto (${barcode})`;
     
     if (apiProduct.quantity) {
@@ -100,8 +131,9 @@ async function handleScan(barcode) {
     if (apiProduct.categories) {
       newItemCategory.value = guessCategory(apiProduct.categories, ['Dairy', 'Beverages', 'Other']); 
     }
-
-    // Chama o adicionar (que agora é assíncrono porque vai à base de dados)
+    
+    // Assegurar que não estamos em modo de edição ao adicionar via scanner
+    editingId.value = null;
     await handleAddItem();
   } catch (error) {
     alert("Erro ao procurar o produto lido pela câmara.");
@@ -117,11 +149,9 @@ async function testProduct() {
   result.value = null;
   try { 
     result.value = await lookupProduct(productId.value); 
-  } 
-  catch (error) { 
+  } catch (error) { 
     result.value = { erro: "Falha ao procurar produto." }; 
-  } 
-  finally { 
+  } finally { 
     isLoading.value = false; 
   }
 }
@@ -135,11 +165,9 @@ async function testRecipes() {
       allergies: ['peanut'],
       excludedIngredients: ['mushroom'],
     }); 
-  } 
-  catch (error) { 
+  } catch (error) { 
     result.value = { erro: "Falha ao procurar receitas." }; 
-  } 
-  finally { 
+  } finally { 
     isLoading.value = false; 
   }
 }
