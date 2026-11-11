@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { setActivePinia, createPinia } from "pinia";
 import { db } from "@/db";
 import { useProfilesStore } from "./profiles";
+import { CHAVE_PERFIL_ATIVO } from "@/services/activeProfileStorage";
 
 const data = {
   name: "Casa",
@@ -16,6 +17,7 @@ describe("profiles store", () => {
   beforeEach(async () => {
     setActivePinia(createPinia());
     await db.profiles.clear();
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -87,7 +89,7 @@ describe("profiles store", () => {
 
     expect(toArray).toHaveBeenCalledTimes(1);
   });
-  
+
   it("só um perfil fica default mesmo com criação em simultâneo", async () => {
     const store = useProfilesStore();
     await Promise.all([
@@ -107,5 +109,102 @@ describe("profiles store", () => {
     await fresh.load();
 
     expect(fresh.defaultProfile.name).toBe("Casa");
+  });
+  // ------------------------------------------------------------------
+  // SCRUM-104 — perfil ativo
+  // ------------------------------------------------------------------
+
+  describe("perfil ativo", () => {
+    async function criarDoisPerfis() {
+      const store = useProfilesStore();
+      const casa = await store.createProfile({
+        ...data,
+        name: "Casa",
+        allergies: ["peanut"],
+      });
+      const ginasio = await store.createProfile({
+        ...data,
+        name: "Ginásio",
+        allergies: ["lactose"],
+      });
+      return { store, casa, ginasio };
+    }
+
+    it("sem escolha feita, o perfil ativo é o default", async () => {
+      const { store } = await criarDoisPerfis();
+      expect(store.activeProfile.name).toBe("Casa");
+    });
+
+    it("sem perfis, não há perfil ativo", () => {
+      expect(useProfilesStore().activeProfile).toBeNull();
+    });
+
+    it("trocar de perfil muda o perfil ativo e as alergias associadas", async () => {
+      const { store, ginasio } = await criarDoisPerfis();
+
+      expect(store.setActiveProfile(ginasio.id)).toBe(true);
+
+      expect(store.activeProfile.name).toBe("Ginásio");
+      expect(store.activeProfile.allergies).toEqual(["lactose"]);
+    });
+
+    it("trocar de perfil não altera qual é o default", async () => {
+      const { store, ginasio } = await criarDoisPerfis();
+      store.setActiveProfile(ginasio.id);
+      expect(store.defaultProfile.name).toBe("Casa");
+    });
+
+    it("recusa trocar para um perfil que não existe", async () => {
+      const { store } = await criarDoisPerfis();
+
+      expect(store.setActiveProfile(9999)).toBe(false);
+
+      expect(store.activeProfile.name).toBe("Casa");
+    });
+
+    it("a escolha sobrevive a um novo arranque da app", async () => {
+      const { store, ginasio } = await criarDoisPerfis();
+      store.setActiveProfile(ginasio.id);
+
+      setActivePinia(createPinia());
+      const fresh = useProfilesStore();
+      await fresh.load();
+
+      expect(fresh.activeProfile.name).toBe("Ginásio");
+    });
+
+    it("se o perfil guardado já não existe, volta ao default e esquece-o", async () => {
+      await criarDoisPerfis();
+      localStorage.setItem(CHAVE_PERFIL_ATIVO, "9999");
+
+      setActivePinia(createPinia());
+      const fresh = useProfilesStore();
+      await fresh.load();
+
+      expect(fresh.activeProfile.name).toBe("Casa");
+      expect(localStorage.getItem(CHAVE_PERFIL_ATIVO)).toBeNull();
+    });
+
+    it("a troca funciona mesmo com o armazenamento local indisponível", async () => {
+      const { store, ginasio } = await criarDoisPerfis();
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("bloqueado");
+      });
+
+      expect(store.setActiveProfile(ginasio.id)).toBe(true);
+      expect(store.activeProfile.name).toBe("Ginásio");
+    });
+
+    it("sem perfis por falha de leitura, não há perfil ativo", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.spyOn(db.profiles, "toArray").mockRejectedValue(
+        new Error("storage indisponivel"),
+      );
+
+      const store = useProfilesStore();
+      await store.load();
+
+      expect(store.activeProfile).toBeNull();
+    });
   });
 });

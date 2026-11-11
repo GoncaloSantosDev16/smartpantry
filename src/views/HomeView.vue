@@ -2,20 +2,29 @@
 import { ref, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
-<<<<<<< HEAD
 import BarcodeScanner from '@/components/BarcodeScanner.vue' 
 import ShoppingListButton from '@/components/ShoppingListButton.vue'
 import ShoppingListDrawer from '@/components/ShoppingListDrawer.vue'
-=======
-import BarcodeScanner from '@/components/BarcodeScanner.vue'
->>>>>>> 358c5bb (feat(scanner): mapear resposta da API e adicionar categorias dinamicas)
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
 import { db } from '@/db'
 
+import { ref, onMounted } from "vue";
+import { lookupProduct } from "@/services/productsApi";
+import { searchRecipes } from "@/services/recipesApi";
+import BarcodeScanner from "@/components/BarcodeScanner.vue";
+import ProfileSwitcher from "@/components/ProfileSwitcher.vue";
+import {
+  validateItem,
+  parseQuantity,
+  guessCategory,
+  UNITS,
+} from "@/services/pantryHelpers";
+import { db } from "@/db";
+ main
+
 // --- ESTADOS DA DESPENSA ---
-const pantryItems = ref([])
-const isScannerOpen = ref(false)
-const isShoppingListOpen = ref(false)
+const pantryItems = ref([]);
+const isScannerOpen = ref(false);
 
 const newItemName = ref('')
 const newItemQty = ref(1)
@@ -25,7 +34,7 @@ const formErrors = ref({})
 const DEFAULT_CATEGORIES = ['Laticínios', 'Bebidas', 'Cereais', 'Snacks', 'Carne', 'Fruta', 'Vegetais', 'Outro']
 
 // NOVO: Estado para controlar a edição (US-04)
-const editingId = ref(null)
+const editingId = ref(null);
 
 // --- ESTADOS DAS APIs ---
 const result = ref(null)
@@ -35,25 +44,25 @@ const isLoading = ref(false)
 // CARREGAR OS DADOS (US-04 - Listar)
 onMounted(async () => {
   try {
-    pantryItems.value = await db.pantryItems.toArray()
+    pantryItems.value = await db.pantryItems.toArray();
   } catch (error) {
-    console.error("Erro ao carregar a despensa:", error)
+    console.error("Erro ao carregar a despensa:", error);
   }
-})
+});
 
 // --- LÓGICA DO FORMULÁRIO (US-03 Adicionar & US-04 Editar) ---
 function toggleScanner() {
-  isScannerOpen.value = !isScannerOpen.value
+  isScannerOpen.value = !isScannerOpen.value;
 }
 
 // NOVO: Função para limpar o formulário e resetar estados
 function resetForm() {
-  newItemName.value = ''
-  newItemQty.value = 1
-  newItemUnit.value = 'un'
-  newItemCategory.value = 'Other'
-  editingId.value = null
-  formErrors.value = {}
+  newItemName.value = "";
+  newItemQty.value = 1;
+  newItemUnit.value = "un";
+  newItemCategory.value = "Other";
+  editingId.value = null;
+  formErrors.value = {};
 }
 
 async function handleAddItem() {
@@ -61,13 +70,13 @@ async function handleAddItem() {
     name: newItemName.value,
     quantity: newItemQty.value,
     unit: newItemUnit.value,
-    category: newItemCategory.value
-  }
+    category: newItemCategory.value,
+  };
 
-  const errors = validateItem(itemToValidate)
+  const errors = validateItem(itemToValidate);
   if (Object.keys(errors).length > 0) {
-    formErrors.value = errors
-    return
+    formErrors.value = errors;
+    return;
   }
   formErrors.value = {}
 
@@ -77,20 +86,22 @@ async function handleAddItem() {
       await db.pantryItems.update(editingId.value, itemToValidate)
 
       // Atualizar a interface
-      const index = pantryItems.value.findIndex(i => i.id === editingId.value)
+      const index = pantryItems.value.findIndex(
+        (i) => i.id === editingId.value,
+      );
       if (index !== -1) {
-        pantryItems.value[index] = { id: editingId.value, ...itemToValidate }
+        pantryItems.value[index] = { id: editingId.value, ...itemToValidate };
       }
     } else {
       // US-03: ADICIONAR NOVO ITEM
-      const generatedId = await db.pantryItems.add(itemToValidate)
-      pantryItems.value.push({ id: generatedId, ...itemToValidate })
+      const generatedId = await db.pantryItems.add(itemToValidate);
+      pantryItems.value.push({ id: generatedId, ...itemToValidate });
     }
 
     resetForm()
   } catch (error) {
-    console.error("Erro ao guardar o item:", error)
-    alert("Houve um erro ao guardar o produto na base de dados.")
+    console.error("Erro ao guardar o item:", error);
+    alert("Houve um erro ao guardar o produto na base de dados.");
   }
 }
 
@@ -105,17 +116,17 @@ function startEdit(item) {
   newItemCategory.value = item.category
 
   // Fazer scroll para o formulário no topo suavemente
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 // Remover item
 async function removeItem(id) {
   try {
-    await db.pantryItems.delete(id)
-    pantryItems.value = pantryItems.value.filter(item => item.id !== id)
+    await db.pantryItems.delete(id);
+    pantryItems.value = pantryItems.value.filter((item) => item.id !== id);
   } catch (error) {
-    console.error("Erro ao remover o item:", error)
-    alert("Houve um erro ao remover o produto.")
+    console.error("Erro ao remover o item:", error);
+    alert("Houve um erro ao remover o produto.");
   }
 }
 
@@ -190,10 +201,16 @@ async function testRecipes() {
 
 <template>
   <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans">
-    <header class="relative text-center mb-10">
-      <ShoppingListButton class="absolute right-0 top-0" @open="isShoppingListOpen = true" />
-      <h1 class="text-4xl font-extrabold text-[#42b883] mb-2 tracking-tight">🛒 SmartPantry</h1>
-      <p class="text-gray-500 text-lg">Adiciona itens à tua despensa & Testa a API</p>
+    <header class="text-center mb-10">
+      <div class="flex justify-end mb-4">
+        <ProfileSwitcher />
+      </div>
+      <h1 class="text-4xl font-extrabold text-[#42b883] mb-2 tracking-tight">
+        🛒 SmartPantry
+      </h1>
+      <p class="text-gray-500 text-lg">
+        Adiciona itens à tua despensa & Testa a API
+      </p>
     </header>
 
     <ShoppingListDrawer v-model:open="isShoppingListOpen" />
@@ -245,15 +262,27 @@ async function testRecipes() {
             </div>
 
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
-              <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Unidade</label>
-              <select v-model="newItemUnit" :class="{ 'has-error': formErrors.unit }">
+              <label
+                class="text-xs font-semibold text-gray-500 uppercase tracking-wide"
+                >Unidade</label
+              >
+              <select
+                v-model="newItemUnit"
+                :class="{ 'has-error': formErrors.unit }"
+              >
                 <option v-for="u in UNITS" :key="u" :value="u">{{ u }}</option>
               </select>
-              <span v-if="formErrors.unit" class="text-xs font-medium text-red-500">{{ formErrors.unit }}</span>
+              <span
+                v-if="formErrors.unit"
+                class="text-xs font-medium text-red-500"
+                >{{ formErrors.unit }}</span
+              >
             </div>
 
             <div class="flex justify-end w-full sm:flex-1 sm:pt-6">
-              <button type="submit" class="btn-primary w-full sm:w-auto">Adicionar Item</button>
+              <button type="submit" class="btn-primary w-full sm:w-auto">
+                Adicionar Item
+              </button>
             </div>
           </div>
         </form>
@@ -261,7 +290,9 @@ async function testRecipes() {
 
       <!-- ZONA 2: LISTA DA DESPENSA -->
       <section class="card">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">📋 A Minha Despensa</h2>
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">
+          📋 A Minha Despensa
+        </h2>
         <ul class="flex flex-col gap-3 m-0 p-0 list-none">
           <li v-if="pantryItems.length === 0"
             class="text-center text-gray-500 py-12 px-4 bg-slate-50 rounded-xl border-2 border-dashed border-gray-200">
@@ -276,7 +307,6 @@ async function testRecipes() {
                 🏷️ {{ item.category }}
               </span>
             </div>
-<<<<<<< HEAD
             <div class="flex items-center gap-3">
               <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">
                 {{ item.quantity }} {{ item.unit }}
@@ -284,11 +314,14 @@ async function testRecipes() {
               <button @click="removeItem(item.id)" class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Remover item">
                 ❌
               </button>
-=======
-            <div>
               <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">{{ item.quantity
               }} {{ item.unit }}</span>
->>>>>>> 358c5bb (feat(scanner): mapear resposta da API e adicionar categorias dinamicas)
+
+              <span
+                class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm"
+                >{{ item.quantity }} {{ item.unit }}</span
+              
+ main
             </div>
           </li>
         </ul>
@@ -297,7 +330,9 @@ async function testRecipes() {
       <!-- ZONA 3: TESTES DA API -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section class="card">
-          <h2 class="text-xl font-bold text-gray-800 mb-4">🔍 Testar Produto (API)</h2>
+          <h2 class="text-xl font-bold text-gray-800 mb-4">
+            🔍 Testar Produto (API)
+          </h2>
           <div class="flex gap-2">
             <input v-model="productId" type="text" placeholder="Ex: 3017620422003" class="w-full flex-1" />
             <button
@@ -317,7 +352,10 @@ async function testRecipes() {
       </div>
 
       <!-- ZONA 4: CONSOLA DE RESULTADOS DA API -->
-      <section class="bg-gray-900 rounded-xl overflow-hidden shadow-lg mt-2" v-if="isLoading || result">
+      <section
+        class="bg-gray-900 rounded-xl overflow-hidden shadow-lg mt-2"
+        v-if="isLoading || result"
+      >
         <div class="bg-gray-800 p-4 border-b border-gray-700">
           <h2 class="text-white text-lg font-bold m-0">💻 Consola da API</h2>
         </div>
