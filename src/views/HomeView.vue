@@ -2,9 +2,13 @@
 import { ref, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
+<<<<<<< HEAD
 import BarcodeScanner from '@/components/BarcodeScanner.vue' 
 import ShoppingListButton from '@/components/ShoppingListButton.vue'
 import ShoppingListDrawer from '@/components/ShoppingListDrawer.vue'
+=======
+import BarcodeScanner from '@/components/BarcodeScanner.vue'
+>>>>>>> 358c5bb (feat(scanner): mapear resposta da API e adicionar categorias dinamicas)
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
 import { db } from '@/db'
 
@@ -272,6 +276,7 @@ async function testRecipes() {
                 🏷️ {{ item.category }}
               </span>
             </div>
+<<<<<<< HEAD
             <div class="flex items-center gap-3">
               <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">
                 {{ item.quantity }} {{ item.unit }}
@@ -279,6 +284,11 @@ async function testRecipes() {
               <button @click="removeItem(item.id)" class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Remover item">
                 ❌
               </button>
+=======
+            <div>
+              <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">{{ item.quantity
+              }} {{ item.unit }}</span>
+>>>>>>> 358c5bb (feat(scanner): mapear resposta da API e adicionar categorias dinamicas)
             </div>
           </li>
         </ul>
