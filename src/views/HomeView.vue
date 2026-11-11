@@ -3,12 +3,15 @@ import { ref, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
 import BarcodeScanner from '@/components/BarcodeScanner.vue' 
+import ShoppingListButton from '@/components/ShoppingListButton.vue'
+import ShoppingListDrawer from '@/components/ShoppingListDrawer.vue'
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
 import { db } from '@/db'
 
 // --- ESTADOS DA DESPENSA ---
 const pantryItems = ref([])
 const isScannerOpen = ref(false)
+const isShoppingListOpen = ref(false)
 
 const newItemName = ref('')
 const newItemQty = ref(1)
@@ -175,10 +178,13 @@ async function testRecipes() {
 
 <template>
   <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans">
-    <header class="text-center mb-10">
+    <header class="relative text-center mb-10">
+      <ShoppingListButton class="absolute right-0 top-0" @open="isShoppingListOpen = true" />
       <h1 class="text-4xl font-extrabold text-[#42b883] mb-2 tracking-tight">🛒 SmartPantry</h1>
       <p class="text-gray-500 text-lg">Adiciona itens à tua despensa & Testa a API</p>
     </header>
+
+    <ShoppingListDrawer v-model:open="isShoppingListOpen" />
 
     <main class="flex flex-col gap-8">
       <!-- ZONA 1: ADICIONAR À DESPENSA -->
