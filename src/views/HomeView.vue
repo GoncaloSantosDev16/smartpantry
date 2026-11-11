@@ -199,6 +199,8 @@ async function testRecipes() {
       </p>
     </header>
 
+    <ShoppingListDrawer v-model:open="isShoppingListOpen" />
+
     <main class="flex flex-col gap-8">
       <!-- ZONA 1: ADICIONAR À DESPENSA -->
       <section class="card">
