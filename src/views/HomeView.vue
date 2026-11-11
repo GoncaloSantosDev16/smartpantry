@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
-import BarcodeScanner from '@/components/BarcodeScanner.vue' 
+import BarcodeScanner from '@/components/BarcodeScanner.vue'
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
 import { db } from '@/db'
 
@@ -14,14 +14,15 @@ const newItemName = ref('')
 const newItemQty = ref(1)
 const newItemUnit = ref('un')
 const newItemCategory = ref('Other')
-const formErrors = ref({}) 
+const formErrors = ref({})
+const DEFAULT_CATEGORIES = ['Laticínios', 'Bebidas', 'Cereais', 'Snacks', 'Carne', 'Fruta', 'Vegetais', 'Outro']
 
 // NOVO: Estado para controlar a edição (US-04)
 const editingId = ref(null)
 
 // --- ESTADOS DAS APIs ---
 const result = ref(null)
-const productId = ref('') 
+const productId = ref('')
 const isLoading = ref(false)
 
 // CARREGAR OS DADOS (US-04 - Listar)
@@ -62,12 +63,12 @@ async function handleAddItem() {
     return
   }
   formErrors.value = {}
-  
+
   try {
     if (editingId.value) {
       // US-04: ATUALIZAR ITEM EXISTENTE
       await db.pantryItems.update(editingId.value, itemToValidate)
-      
+
       // Atualizar a interface
       const index = pantryItems.value.findIndex(i => i.id === editingId.value)
       if (index !== -1) {
@@ -78,7 +79,7 @@ async function handleAddItem() {
       const generatedId = await db.pantryItems.add(itemToValidate)
       pantryItems.value.push({ id: generatedId, ...itemToValidate })
     }
-    
+
     resetForm()
   } catch (error) {
     console.error("Erro ao guardar o item:", error)
@@ -95,7 +96,7 @@ function startEdit(item) {
   newItemQty.value = item.quantity
   newItemUnit.value = item.unit
   newItemCategory.value = item.category
-  
+
   // Fazer scroll para o formulário no topo suavemente
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -115,26 +116,33 @@ async function removeItem(id) {
 async function handleScan(barcode) {
   isScannerOpen.value = false;
   isLoading.value = true;
+
   try {
     const apiResult = await lookupProduct(barcode);
     result.value = apiResult;
-    
+
     const apiProduct = apiResult?.product || {};
-    newItemName.value = apiProduct.product_name || `Produto (${barcode})`;
-    
+
+    // 1. Atualizado: Procura por 'name' primeiro (para apanhar "Nutella")
+    newItemName.value = apiProduct.name || apiProduct.product_name || `Produto (${barcode})`;
+
     if (apiProduct.quantity) {
       const parsed = parseQuantity(apiProduct.quantity);
       if (parsed.quantity) newItemQty.value = parsed.quantity;
       if (parsed.unit) newItemUnit.value = parsed.unit;
     }
-    
-    if (apiProduct.categories) {
-      newItemCategory.value = guessCategory(apiProduct.categories, ['Dairy', 'Beverages', 'Other']); 
+
+    // 2. Atualizado: Procura por 'category' primeiro (para apanhar "breakfasts")
+    // Substitui o bloco "if (apiProduct.categories) { ... }" por isto:
+    const apiCategory = apiProduct.category || apiProduct.categories;
+    if (apiCategory) {
+      newItemCategory.value = apiCategory;
     }
-    
+
     // Assegurar que não estamos em modo de edição ao adicionar via scanner
     editingId.value = null;
     await handleAddItem();
+
   } catch (error) {
     alert("Erro ao procurar o produto lido pela câmara.");
   } finally {
@@ -147,28 +155,28 @@ async function testProduct() {
   if (!productId.value) return;
   isLoading.value = true;
   result.value = null;
-  try { 
-    result.value = await lookupProduct(productId.value); 
-  } catch (error) { 
-    result.value = { erro: "Falha ao procurar produto." }; 
-  } finally { 
-    isLoading.value = false; 
+  try {
+    result.value = await lookupProduct(productId.value);
+  } catch (error) {
+    result.value = { erro: "Falha ao procurar produto." };
+  } finally {
+    isLoading.value = false;
   }
 }
 
 async function testRecipes() {
   isLoading.value = true;
   result.value = null;
-  try { 
+  try {
     result.value = await searchRecipes(['eggs', 'tomato', 'cheese'], {
       diets: ['vegetarian'],
       allergies: ['peanut'],
       excludedIngredients: ['mushroom'],
-    }); 
-  } catch (error) { 
-    result.value = { erro: "Falha ao procurar receitas." }; 
-  } finally { 
-    isLoading.value = false; 
+    });
+  } catch (error) {
+    result.value = { erro: "Falha ao procurar receitas." };
+  } finally {
+    isLoading.value = false;
   }
 }
 </script>
@@ -185,18 +193,14 @@ async function testRecipes() {
       <section class="card">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-2xl font-bold text-gray-800 m-0">📦 Novo Ingrediente</h2>
-          <button 
-            @click="toggleScanner" 
-            :class="[
-              'p-2 text-xl bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-200 hover:-translate-y-0.5 transition-all', 
-              isScannerOpen ? 'bg-[#42b883] border-[#42b883] text-white animate-pulse shadow-[0_0_0_4px_rgba(66,184,131,0.2)]' : ''
-            ]" 
-            title="Ler Código de Barras"
-          >
+          <button @click="toggleScanner" :class="[
+            'p-2 text-xl bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-200 hover:-translate-y-0.5 transition-all',
+            isScannerOpen ? 'bg-[#42b883] border-[#42b883] text-white animate-pulse shadow-[0_0_0_4px_rgba(66,184,131,0.2)]' : ''
+          ]" title="Ler Código de Barras">
             📷
           </button>
         </div>
-        
+
         <div v-if="isScannerOpen" class="mb-6 border-2 border-dashed border-[#42b883] rounded-xl p-4 bg-green-50">
           <BarcodeScanner @scanned="handleScan" />
         </div>
@@ -205,28 +209,31 @@ async function testRecipes() {
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-[2]">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</label>
-              <input v-model="newItemName" type="text" placeholder="Ex: Arroz agulha..." :class="{ 'has-error': formErrors.name }" />
+              <input v-model="newItemName" type="text" placeholder="Ex: Arroz agulha..."
+                :class="{ 'has-error': formErrors.name }" />
               <span v-if="formErrors.name" class="text-xs font-medium text-red-500">{{ formErrors.name }}</span>
             </div>
-            
+
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoria</label>
-              <select v-model="newItemCategory" :class="{ 'has-error': formErrors.category }">
-                <option value="Dairy">Laticínios</option>
-                <option value="Beverages">Bebidas</option>
-                <option value="Other">Outro</option>
-              </select>
+              <input v-model="newItemCategory" list="category-options" type="text"
+                placeholder="Seleciona ou escreve uma..." :class="{ 'has-error': formErrors.category }" />
+
+              <datalist id="category-options">
+                <option v-for="cat in DEFAULT_CATEGORIES" :key="cat" :value="cat"></option>
+              </datalist>
               <span v-if="formErrors.category" class="text-xs font-medium text-red-500">{{ formErrors.category }}</span>
             </div>
           </div>
-          
+
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantidade</label>
-              <input v-model="newItemQty" type="number" min="0.1" step="0.1" :class="{ 'has-error': formErrors.quantity }" />
+              <input v-model="newItemQty" type="number" min="0.1" step="0.1"
+                :class="{ 'has-error': formErrors.quantity }" />
               <span v-if="formErrors.quantity" class="text-xs font-medium text-red-500">{{ formErrors.quantity }}</span>
             </div>
-            
+
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Unidade</label>
               <select v-model="newItemUnit" :class="{ 'has-error': formErrors.unit }">
@@ -246,19 +253,22 @@ async function testRecipes() {
       <section class="card">
         <h2 class="text-2xl font-bold text-gray-800 mb-6">📋 A Minha Despensa</h2>
         <ul class="flex flex-col gap-3 m-0 p-0 list-none">
-          <li v-if="pantryItems.length === 0" class="text-center text-gray-500 py-12 px-4 bg-slate-50 rounded-xl border-2 border-dashed border-gray-200">
+          <li v-if="pantryItems.length === 0"
+            class="text-center text-gray-500 py-12 px-4 bg-slate-50 rounded-xl border-2 border-dashed border-gray-200">
             <div class="text-4xl mb-2 opacity-50">🍽️</div>
             A tua despensa está vazia. Adiciona produtos acima.
           </li>
-          <li v-for="item in pantryItems" :key="item.id" class="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-gray-200 hover:translate-x-1 hover:border-slate-300 transition-transform">
+          <li v-for="item in pantryItems" :key="item.id"
+            class="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-gray-200 hover:translate-x-1 hover:border-slate-300 transition-transform">
             <div class="flex items-center gap-4">
               <strong class="text-lg font-semibold">{{ item.name }}</strong>
-              <span class="text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600 font-medium">
-                {{ item.category === 'Dairy' ? '🧀 Laticínios' : item.category === 'Beverages' ? '🥤 Bebidas' : '📦 Outro' }}
+              <span class="text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600 font-medium capitalize">
+                🏷️ {{ item.category }}
               </span>
             </div>
             <div>
-              <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">{{ item.quantity }} {{ item.unit }}</span>
+              <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">{{ item.quantity
+              }} {{ item.unit }}</span>
             </div>
           </li>
         </ul>
@@ -270,13 +280,17 @@ async function testRecipes() {
           <h2 class="text-xl font-bold text-gray-800 mb-4">🔍 Testar Produto (API)</h2>
           <div class="flex gap-2">
             <input v-model="productId" type="text" placeholder="Ex: 3017620422003" class="w-full flex-1" />
-            <button class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" @click="testProduct" :disabled="isLoading">Procurar</button>
+            <button
+              class="bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              @click="testProduct" :disabled="isLoading">Procurar</button>
           </div>
         </section>
 
         <section class="card">
           <h2 class="text-xl font-bold text-gray-800 mb-4">🍳 Testar Receitas (API)</h2>
-          <button class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" @click="testRecipes" :disabled="isLoading">
+          <button
+            class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            @click="testRecipes" :disabled="isLoading">
             Procurar Receitas (Ovos, Tomate, Queijo)
           </button>
         </section>
@@ -288,9 +302,9 @@ async function testRecipes() {
           <h2 class="text-white text-lg font-bold m-0">💻 Consola da API</h2>
         </div>
         <div v-if="isLoading" class="p-8 text-center text-[#42b883] font-bold">A carregar os dados...</div>
-        <pre v-else class="m-0 p-6 text-green-400 font-mono text-sm whitespace-pre-wrap break-words max-h-[500px] overflow-y-auto">{{ result }}</pre>
+        <pre v-else
+          class="m-0 p-6 text-green-400 font-mono text-sm whitespace-pre-wrap break-words max-h-[500px] overflow-y-auto">{{ result }}</pre>
       </section>
     </main>
   </div>
 </template>
-
