@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>SCRUM-119 — BDD: pesquisa simulada (mock) no Spoonacular e exibição das receitas (US-09)</description>
+   <name>RunRecipeSuggestionsFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>3e9c1b7a-5f2d-4c8e-a1b6-90d2f37c1190</testCaseGuid>
+</TestCaseEntity>

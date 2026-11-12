@@ -18,18 +18,48 @@ export function computeOverlap(recipeIngredientNames, pantryNames) {
   return { percent: Math.round((inStock.length / recipe.length) * 100), inStock, missing }
 }
  
+// Códigos de erro (mesmos nomes do genai.js, para o GenAIStatus saber quando
+// mostrar "Tentar novamente").
+const MESSAGES = {
+  'missing-key': 'Falta VITE_SPOONACULAR_KEY no .env.local',
+  'rate-limit': 'Limite diário da API atingido',
+  timeout: 'A pesquisa de receitas demorou demasiado. Tenta novamente.',
+  aborted: 'Pedido cancelado.',
+  network: 'Sem ligação à internet. Liga-te e tenta novamente.',
+  server: 'O serviço de receitas está indisponível neste momento. Tenta mais tarde.',
+}
+const fail = (code, extra = {}) => ({ status: 'error', code, message: MESSAGES[code] ?? MESSAGES.server, ...extra })
+
+// SCRUM-119 — Resposta simulada, SÓ em desenvolvimento (npm run dev); no build de
+// produção este código é removido. Os testes Katalon definem antes do pedido:
+//   window.__SMARTPANTRY_SPOONACULAR_MOCK__ = { data: { results: [...] } }  ou  { error: 'rate-limit' }
+// e podem ler o pedido feito em window.__SMARTPANTRY_SPOONACULAR_MOCK__.lastRequest.
+function devMock(path, params) {
+  if (!import.meta.env.DEV) return null
+  const mock = globalThis.__SMARTPANTRY_SPOONACULAR_MOCK__
+  if (!mock || typeof mock !== 'object') return null
+  mock.lastRequest = { path, params: { ...params } }
+  if (mock.error) return fail(mock.error)
+  return { status: 'ok', data: mock.data ?? {} }
+}
+
 async function request(path, params, signal) {
+  const mocked = devMock(path, params)
+  if (mocked) return mocked
+
   const key = import.meta.env.VITE_SPOONACULAR_KEY
-  if (!key) return { status: 'error', message: 'Falta VITE_SPOONACULAR_KEY no .env.local' }
- 
+  if (!key) return fail('missing-key')
+
   const qs = new URLSearchParams({ ...params, apiKey: key })
   try {
     const res = await fetch(`${BASE_URL}${path}?${qs}`, { signal: signal ?? AbortSignal.timeout(10000) })
-    if (res.status === 402) return { status: 'error', message: 'Limite diário da API atingido' }
-    if (!res.ok) return { status: 'error', message: `HTTP ${res.status}` }
+    if (res.status === 402) return fail('rate-limit')
+    if (!res.ok) return fail('server', { httpStatus: res.status, detail: `HTTP ${res.status}` })
     return { status: 'ok', data: await res.json() }
   } catch (e) {
-    return { status: 'error', message: e?.message ?? 'Erro de rede' }
+    if (e?.name === 'TimeoutError') return fail('timeout')
+    if (e?.name === 'AbortError') return fail('aborted')
+    return fail('network', { detail: e?.message })
   }
 }
  
@@ -45,6 +75,9 @@ export async function searchRecipes(pantryNames, profile = {}, { number = 10, si
     addRecipeInformation: 'true',
     fillIngredients: 'true',
     instructionsRequired: 'true',
+    // US-09: as que usam mais ingredientes da despensa primeiro; ignora básicos (sal, água…)
+    sort: 'max-used-ingredients',
+    ignorePantry: 'true',
   }
   if (profile.diets?.length) params.diet = profile.diets.join(',')
   if (profile.allergies?.length) params.intolerances = profile.allergies.join(',')
