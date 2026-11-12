@@ -194,6 +194,13 @@ async function testRecipes() {
     <header class="text-center mb-10">
       <div class="flex justify-end items-center gap-3 mb-4">
         <ProfileSwitcher />
+        <RouterLink
+          to="/receitas"
+          data-testid="recipes-link"
+          class="flex h-11 items-center gap-1 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold shadow-sm active:scale-95"
+        >
+          🍳 Receitas
+        </RouterLink>
         <ShoppingListButton @open="isShoppingListOpen = true" />
       </div>
       <h1 class="text-4xl font-extrabold text-[#42b883] mb-2 tracking-tight">
