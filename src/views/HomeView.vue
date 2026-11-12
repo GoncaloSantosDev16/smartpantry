@@ -7,24 +7,12 @@ import ShoppingListButton from '@/components/ShoppingListButton.vue'
 import ShoppingListDrawer from '@/components/ShoppingListDrawer.vue'
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
 import { db } from '@/db'
-
-import { ref, onMounted } from "vue";
-import { lookupProduct } from "@/services/productsApi";
-import { searchRecipes } from "@/services/recipesApi";
-import BarcodeScanner from "@/components/BarcodeScanner.vue";
-import ProfileSwitcher from "@/components/ProfileSwitcher.vue";
-import {
-  validateItem,
-  parseQuantity,
-  guessCategory,
-  UNITS,
-} from "@/services/pantryHelpers";
-import { db } from "@/db";
- main
+import ProfileSwitcher from '@/components/ProfileSwitcher.vue'
 
 // --- ESTADOS DA DESPENSA ---
 const pantryItems = ref([]);
 const isScannerOpen = ref(false);
+const isShoppingListOpen = ref(false);
 
 const newItemName = ref('')
 const newItemQty = ref(1)
@@ -202,8 +190,16 @@ async function testRecipes() {
 <template>
   <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans">
     <header class="text-center mb-10">
-      <div class="flex justify-end mb-4">
+      <div class="flex justify-end items-center gap-3 mb-4">
         <ProfileSwitcher />
+        <RouterLink
+          to="/receitas"
+          data-testid="recipes-link"
+          class="flex h-11 items-center gap-1 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold shadow-sm active:scale-95"
+        >
+          🍳 Receitas
+        </RouterLink>
+        <ShoppingListButton @open="isShoppingListOpen = true" />
       </div>
       <h1 class="text-4xl font-extrabold text-[#42b883] mb-2 tracking-tight">
         🛒 SmartPantry
@@ -314,14 +310,6 @@ async function testRecipes() {
               <button @click="removeItem(item.id)" class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Remover item">
                 ❌
               </button>
-              <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">{{ item.quantity
-              }} {{ item.unit }}</span>
-
-              <span
-                class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm"
-                >{{ item.quantity }} {{ item.unit }}</span
-              
- main
             </div>
           </li>
         </ul>
