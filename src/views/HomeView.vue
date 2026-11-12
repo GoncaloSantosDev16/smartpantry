@@ -2,29 +2,18 @@
 import { ref, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
-import BarcodeScanner from '@/components/BarcodeScanner.vue' 
+import BarcodeScanner from '@/components/BarcodeScanner.vue'
+import ImageBarcodeUpload from '@/components/ImageBarcodeUpload.vue' 
 import ShoppingListButton from '@/components/ShoppingListButton.vue'
 import ShoppingListDrawer from '@/components/ShoppingListDrawer.vue'
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
 import { db } from '@/db'
-
-import { ref, onMounted } from "vue";
-import { lookupProduct } from "@/services/productsApi";
-import { searchRecipes } from "@/services/recipesApi";
-import BarcodeScanner from "@/components/BarcodeScanner.vue";
-import ProfileSwitcher from "@/components/ProfileSwitcher.vue";
-import {
-  validateItem,
-  parseQuantity,
-  guessCategory,
-  UNITS,
-} from "@/services/pantryHelpers";
-import { db } from "@/db";
- main
+import ProfileSwitcher from '@/components/ProfileSwitcher.vue'
 
 // --- ESTADOS DA DESPENSA ---
 const pantryItems = ref([]);
-const isScannerOpen = ref(false);
+const activeInputMode = ref('manual'); // Pode ser: 'manual', 'camera', ou 'upload'
+const isShoppingListOpen = ref(false);
 
 const newItemName = ref('')
 const newItemQty = ref(1)
@@ -51,8 +40,9 @@ onMounted(async () => {
 });
 
 // --- LÓGICA DO FORMULÁRIO (US-03 Adicionar & US-04 Editar) ---
-function toggleScanner() {
-  isScannerOpen.value = !isScannerOpen.value;
+function setInputMode(mode) {
+  // Se clicar no modo que já está ativo, volta para o manual (fechar)
+  activeInputMode.value = activeInputMode.value === mode ? 'manual' : mode;
 }
 
 // NOVO: Função para limpar o formulário e resetar estados
@@ -132,7 +122,7 @@ async function removeItem(id) {
 
 // --- LÓGICA DA CÂMARA ---
 async function handleScan(barcode) {
-  isScannerOpen.value = false;
+  activeInputMode.value = 'manual'; // Volta ao modo manual após ler
   isLoading.value = true;
 
   try {
@@ -202,8 +192,9 @@ async function testRecipes() {
 <template>
   <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans">
     <header class="text-center mb-10">
-      <div class="flex justify-end mb-4">
+      <div class="flex justify-end items-center gap-3 mb-4">
         <ProfileSwitcher />
+        <ShoppingListButton @open="isShoppingListOpen = true" />
       </div>
       <h1 class="text-4xl font-extrabold text-[#42b883] mb-2 tracking-tight">
         🛒 SmartPantry
@@ -216,23 +207,46 @@ async function testRecipes() {
     <ShoppingListDrawer v-model:open="isShoppingListOpen" />
 
     <main class="flex flex-col gap-8">
-      <!-- ZONA 1: ADICIONAR À DESPENSA -->
+    <!-- ZONA 1: ADICIONAR À DESPENSA -->
       <section class="card">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col mb-6 gap-4">
           <h2 class="text-2xl font-bold text-gray-800 m-0">📦 Novo Ingrediente</h2>
-          <button @click="toggleScanner" :class="[
-            'p-2 text-xl bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-200 hover:-translate-y-0.5 transition-all',
-            isScannerOpen ? 'bg-[#42b883] border-[#42b883] text-white animate-pulse shadow-[0_0_0_4px_rgba(66,184,131,0.2)]' : ''
-          ]" title="Ler Código de Barras">
-            📷
-          </button>
+          
+          <!-- TABS DE SELEÇÃO DE MODO -->
+          <div class="flex bg-gray-100 p-1 rounded-lg w-full max-w-md mx-auto sm:mx-0">
+            <button 
+              @click="setInputMode('manual')" 
+              :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'manual' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            >
+              ✍️ Manual
+            </button>
+            <button 
+              @click="setInputMode('camera')" 
+              :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'camera' ? 'bg-[#42b883] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            >
+              📷 Câmara
+            </button>
+            <button 
+              @click="setInputMode('upload')" 
+              :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'upload' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            >
+              🖼️ Imagem
+            </button>
+          </div>
         </div>
 
-        <div v-if="isScannerOpen" class="mb-6 border-2 border-dashed border-[#42b883] rounded-xl p-4 bg-green-50">
+        <!-- RENDERIZAÇÃO CONDICIONAL DOS COMPONENTES DE LEITURA -->
+        <div v-if="activeInputMode === 'camera'" class="mb-6 border-2 border-dashed border-[#42b883] rounded-xl p-4 bg-green-50">
           <BarcodeScanner @scanned="handleScan" />
         </div>
 
+        <div v-if="activeInputMode === 'upload'" class="mb-6 border-2 border-dashed border-blue-400 rounded-xl p-4 bg-blue-50">
+          <ImageBarcodeUpload @scanned="handleScan" />
+        </div>
+
+        <!-- O teu formulário original mantém-se igualzinho a partir daqui -->
         <form @submit.prevent="handleAddItem" class="flex flex-col gap-5">
+           <!-- ... o resto do teu form ... -->
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-[2]">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</label>
@@ -314,14 +328,6 @@ async function testRecipes() {
               <button @click="removeItem(item.id)" class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Remover item">
                 ❌
               </button>
-              <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">{{ item.quantity
-              }} {{ item.unit }}</span>
-
-              <span
-                class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm"
-                >{{ item.quantity }} {{ item.unit }}</span
-              
- main
             </div>
           </li>
         </ul>

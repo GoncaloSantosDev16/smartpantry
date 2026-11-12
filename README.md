@@ -31,3 +31,4 @@ npm run build
 ### Add API Key
 
 add VITE_SPOONACULAR_KEY in .env.local
+add 
