@@ -13,6 +13,11 @@ const router = createRouter({
       component: () => import("../views/OnboardingView.vue"),
     },
     {
+      path: "/receitas",
+      name: "recipes",
+      component: () => import("../views/RecipeSuggestionsView.vue"),
+    },
+    {
       path: "/scanner",
       name: "scanner",
       component: () => import("../components/BarcodeScanner.vue"),
