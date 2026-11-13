@@ -141,7 +141,6 @@ async function handleScan(barcode) {
     }
 
     // 2. Atualizado: Procura por 'category' primeiro (para apanhar "breakfasts")
-    // Substitui o bloco "if (apiProduct.categories) { ... }" por isto:
     const apiCategory = apiProduct.category || apiProduct.categories;
     if (apiCategory) {
       newItemCategory.value = apiCategory;
@@ -215,18 +214,21 @@ async function testRecipes() {
           <!-- TABS DE SELEÇÃO DE MODO -->
           <div class="flex bg-gray-100 p-1 rounded-lg w-full max-w-md mx-auto sm:mx-0">
             <button 
+              data-testid="tab-manual"
               @click="setInputMode('manual')" 
               :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'manual' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
             >
               ✍️ Manual
             </button>
             <button 
+              data-testid="tab-camera"
               @click="setInputMode('camera')" 
               :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'camera' ? 'bg-[#42b883] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700']"
             >
               📷 Câmara
             </button>
             <button 
+              data-testid="tab-upload"
               @click="setInputMode('upload')" 
               :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'upload' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700']"
             >
@@ -244,20 +246,19 @@ async function testRecipes() {
           <ImageBarcodeUpload @scanned="handleScan" />
         </div>
 
-        <!-- O teu formulário original mantém-se igualzinho a partir daqui -->
+        <!-- FORMULÁRIO -->
         <form @submit.prevent="handleAddItem" class="flex flex-col gap-5">
-           <!-- ... o resto do teu form ... -->
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-[2]">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</label>
-              <input v-model="newItemName" type="text" placeholder="Ex: Arroz agulha..."
+              <input data-testid="input-name" v-model="newItemName" type="text" placeholder="Ex: Arroz agulha..."
                 :class="{ 'has-error': formErrors.name }" />
               <span v-if="formErrors.name" class="text-xs font-medium text-red-500">{{ formErrors.name }}</span>
             </div>
 
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoria</label>
-              <input v-model="newItemCategory" list="category-options" type="text"
+              <input data-testid="input-category" v-model="newItemCategory" list="category-options" type="text"
                 placeholder="Seleciona ou escreve uma..." :class="{ 'has-error': formErrors.category }" />
 
               <datalist id="category-options">
@@ -270,7 +271,7 @@ async function testRecipes() {
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantidade</label>
-              <input v-model="newItemQty" type="number" min="0.1" step="0.1"
+              <input data-testid="input-quantity" v-model="newItemQty" type="number" min="0.1" step="0.1"
                 :class="{ 'has-error': formErrors.quantity }" />
               <span v-if="formErrors.quantity" class="text-xs font-medium text-red-500">{{ formErrors.quantity }}</span>
             </div>
@@ -281,6 +282,7 @@ async function testRecipes() {
                 >Unidade</label
               >
               <select
+                data-testid="select-unit"
                 v-model="newItemUnit"
                 :class="{ 'has-error': formErrors.unit }"
               >
@@ -294,7 +296,7 @@ async function testRecipes() {
             </div>
 
             <div class="flex justify-end w-full sm:flex-1 sm:pt-6">
-              <button type="submit" class="btn-primary w-full sm:w-auto">
+              <button data-testid="btn-add-item" type="submit" class="btn-primary w-full sm:w-auto">
                 Adicionar Item
               </button>
             </div>
@@ -316,7 +318,7 @@ async function testRecipes() {
           <li v-for="item in pantryItems" :key="item.id"
             class="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-gray-200 hover:translate-x-1 hover:border-slate-300 transition-transform">
             <div class="flex items-center gap-4">
-              <strong class="text-lg font-semibold">{{ item.name }}</strong>
+              <strong data-testid="pantry-item-name" class="text-lg font-semibold">{{ item.name }}</strong>
               <span class="text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600 font-medium capitalize">
                 🏷️ {{ item.category }}
               </span>
