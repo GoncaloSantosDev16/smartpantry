@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>SCRUM-108 — BDD: produto com validade de 1 dia mostra o alerta (US-06)</description>
+   <name>RunExpiringAlertFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>6d2a8f41-0c7b-4e93-b5a1-34e0c9f71086</testCaseGuid>
+</TestCaseEntity>

@@ -9,16 +9,10 @@ import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 
-/**
- * SCRUM-119 — Step definitions da US-09 (receitas com base na despensa).
- *
- * O Spoonacular é simulado: em desenvolvimento, o recipesApi.js usa
- * window.__SMARTPANTRY_SPOONACULAR_MOCK__ em vez de chamar a API (ver devMock()).
- * O browser é aberto e fechado pelo Hooks.groovy.
- */
+
 public class RecipeSuggestionsSteps {
 
-    /** Resposta simulada do /recipes/complexSearch (só os campos que a app usa). */
+   
     private static final Map RESPOSTA_SIMULADA = [
         results: [
             [
@@ -47,12 +41,12 @@ public class RecipeSuggestionsSteps {
         ],
     ]
 
-    // Cucumber cria uma instância nova por cenário: estes campos não passam entre cenários.
+   
     private Map mockPendente = null
 
     // ------------------------------------------------------------- helpers
 
-    /** Substitui o conteúdo de pantryItems no IndexedDB (mesma técnica do Suporte.limparPerfis). */
+    
     private static void definirDespensa(List<Map> itens) {
         WebUI.executeJavaScript('''
             window.__despensaPronta = false

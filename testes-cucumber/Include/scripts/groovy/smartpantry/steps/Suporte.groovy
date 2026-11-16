@@ -12,24 +12,19 @@ import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
  */
 public class Suporte {
 
-    /**
-     * Endereço do servidor de desenvolvimento.
-     *
-     * CONFIRMA ISTO: corre `npm run dev` e usa exatamente o endereço que o
-     * terminal imprime. O basic-ssl foi retirado do vite.config.js, por isso é http.
-     */
+
     public static final String BASE_URL = 'http://localhost:5173'
 
     public static final int ESPERA = 10
 
-    /** Constrói um TestObject a partir de um data-testid. */
+   
     public static TestObject porTestId(String testId) {
         TestObject objeto = new TestObject(testId)
         objeto.addProperty('css', ConditionType.EQUALS, "[data-testid='" + testId + "']")
         return objeto
     }
 
-    /** Constrói um TestObject a partir de um seletor CSS livre. */
+    
     public static TestObject porCss(String css) {
         TestObject objeto = new TestObject(css)
         objeto.addProperty('css', ConditionType.EQUALS, css)

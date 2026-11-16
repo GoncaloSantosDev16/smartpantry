@@ -1,12 +1,10 @@
 // SCRUM-116 — Lista formatada de todos os ingredientes que existem na despensa,
 // pronta a enviar ao Sous-Chef. Funções puras (sem base de dados), fáceis de testar.
 
+import { expirationTime } from './expiration'
+
 const round = (n) => Math.round(n * 1000) / 1000
 const keyOf = (name, unit) => `${name.toLocaleLowerCase('pt-PT')}|${unit}`
-const time = (date) => {
-  const t = date ? new Date(date).getTime() : NaN
-  return Number.isNaN(t) ? null : t
-}
 
 /**
  * Converte os itens da despensa em [{ name, quantity, unit, expirationDate }].
@@ -22,7 +20,7 @@ export function buildPantryIngredientList(items = [], { now = new Date() } = {})
     const name = String(item?.name ?? '').replace(/\s+/g, ' ').trim()
     const quantity = Number(item?.quantity)
     const unit = String(item?.unit ?? '').trim() || 'un'
-    const expires = time(item?.expirationDate)
+    const expires = expirationTime(item?.expirationDate)
 
     if (!name || !Number.isFinite(quantity) || quantity <= 0) continue
     if (expires !== null && expires < nowTime) continue
