@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
 import BarcodeScanner from '@/components/BarcodeScanner.vue'
@@ -7,11 +7,14 @@ import ImageBarcodeUpload from '@/components/ImageBarcodeUpload.vue'
 import ShoppingListButton from '@/components/ShoppingListButton.vue'
 import ShoppingListDrawer from '@/components/ShoppingListDrawer.vue'
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
-import { db } from '@/db'
+import { usePantryStore } from '@/stores/pantry'
+import { isExpiringSoon, isExpired, expiryLabel } from '@/services/expiration'
+import ExpiringAlert from '@/components/ExpiringAlert.vue'
 import ProfileSwitcher from '@/components/ProfileSwitcher.vue'
 
 // --- ESTADOS DA DESPENSA ---
-const pantryItems = ref([]);
+const pantry = usePantryStore();
+const pantryItems = computed(() => pantry.items);
 const activeInputMode = ref('manual'); // Pode ser: 'manual', 'camera', ou 'upload'
 const isShoppingListOpen = ref(false);
 
@@ -19,6 +22,7 @@ const newItemName = ref('')
 const newItemQty = ref(1)
 const newItemUnit = ref('un')
 const newItemCategory = ref('Other')
+const newItemExpiration = ref('') // US-06: AAAA-MM-DD (input type="date")
 const formErrors = ref({})
 const DEFAULT_CATEGORIES = ['Laticínios', 'Bebidas', 'Cereais', 'Snacks', 'Carne', 'Fruta', 'Vegetais', 'Outro']
 
@@ -32,11 +36,7 @@ const isLoading = ref(false)
 
 // CARREGAR OS DADOS (US-04 - Listar)
 onMounted(async () => {
-  try {
-    pantryItems.value = await db.pantryItems.toArray();
-  } catch (error) {
-    console.error("Erro ao carregar a despensa:", error);
-  }
+  await pantry.load(); // a store trata os erros
 });
 
 // --- LÓGICA DO FORMULÁRIO (US-03 Adicionar & US-04 Editar) ---
@@ -51,6 +51,7 @@ function resetForm() {
   newItemQty.value = 1;
   newItemUnit.value = "un";
   newItemCategory.value = "Other";
+  newItemExpiration.value = "";
   editingId.value = null;
   formErrors.value = {};
 }
@@ -61,9 +62,10 @@ async function handleAddItem() {
     quantity: newItemQty.value,
     unit: newItemUnit.value,
     category: newItemCategory.value,
+    expirationDate: newItemExpiration.value || null,
   };
 
-  const errors = validateItem(itemToValidate);
+  const errors = validateItem({ ...itemToValidate, expiresOn: itemToValidate.expirationDate });
   if (Object.keys(errors).length > 0) {
     formErrors.value = errors;
     return;
@@ -73,19 +75,10 @@ async function handleAddItem() {
   try {
     if (editingId.value) {
       // US-04: ATUALIZAR ITEM EXISTENTE
-      await db.pantryItems.update(editingId.value, itemToValidate)
-
-      // Atualizar a interface
-      const index = pantryItems.value.findIndex(
-        (i) => i.id === editingId.value,
-      );
-      if (index !== -1) {
-        pantryItems.value[index] = { id: editingId.value, ...itemToValidate };
-      }
+      await pantry.updateItem(editingId.value, itemToValidate)
     } else {
       // US-03: ADICIONAR NOVO ITEM
-      const generatedId = await db.pantryItems.add(itemToValidate);
-      pantryItems.value.push({ id: generatedId, ...itemToValidate });
+      await pantry.addItem(itemToValidate);
     }
 
     resetForm()
@@ -104,6 +97,7 @@ function startEdit(item) {
   newItemQty.value = item.quantity
   newItemUnit.value = item.unit
   newItemCategory.value = item.category
+  newItemExpiration.value = item.expirationDate ?? ''
 
   // Fazer scroll para o formulário no topo suavemente
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -112,8 +106,7 @@ function startEdit(item) {
 // Remover item
 async function removeItem(id) {
   try {
-    await db.pantryItems.delete(id);
-    pantryItems.value = pantryItems.value.filter((item) => item.id !== id);
+    await pantry.removeItem(id);
   } catch (error) {
     console.error("Erro ao remover o item:", error);
     alert("Houve um erro ao remover o produto.");
@@ -214,6 +207,9 @@ async function testRecipes() {
     <ShoppingListDrawer v-model:open="isShoppingListOpen" />
 
     <main class="flex flex-col gap-8">
+      <!-- US-06: ALERTA DE ITENS A EXPIRAR (48h) -->
+      <ExpiringAlert />
+
     <!-- ZONA 1: ADICIONAR À DESPENSA -->
       <section class="card">
         <div class="flex flex-col mb-6 gap-4">
@@ -270,18 +266,9 @@ async function testRecipes() {
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-[2]">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</label>
-              <input
-                v-model="newItemName"
-                data-testid="input-name"
-                type="text"
-                placeholder="Ex: Arroz agulha..."
-                :class="{ 'has-error': formErrors.name }"
-              />
-              <span
-                v-if="formErrors.name"
-                data-testid="error-name"
-                class="text-xs font-medium text-red-500"
-              >{{ formErrors.name }}</span>
+              <input v-model="newItemName" data-testid="item-name" type="text" placeholder="Ex: Arroz agulha..."
+                :class="{ 'has-error': formErrors.name }" />
+              <span v-if="formErrors.name" class="text-xs font-medium text-red-500">{{ formErrors.name }}</span>
             </div>
 
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
@@ -309,19 +296,9 @@ async function testRecipes() {
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantidade</label>
-              <input
-                v-model="newItemQty"
-                data-testid="input-quantity"
-                type="number"
-                min="0.1"
-                step="0.1"
-                :class="{ 'has-error': formErrors.quantity }"
-              />
-              <span
-                v-if="formErrors.quantity"
-                data-testid="error-quantity"
-                class="text-xs font-medium text-red-500"
-              >{{ formErrors.quantity }}</span>
+              <input v-model="newItemQty" data-testid="item-qty" type="number" min="0.1" step="0.1"
+                :class="{ 'has-error': formErrors.quantity }" />
+              <span v-if="formErrors.quantity" class="text-xs font-medium text-red-500">{{ formErrors.quantity }}</span>
             </div>
 
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
@@ -344,12 +321,15 @@ async function testRecipes() {
               >
             </div>
 
+            <div class="flex flex-col gap-1.5 w-full sm:flex-1">
+              <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Validade</label>
+              <input v-model="newItemExpiration" data-testid="item-expiration" type="date"
+                :class="{ 'has-error': formErrors.expiresOn }" />
+              <span v-if="formErrors.expiresOn" class="text-xs font-medium text-red-500">{{ formErrors.expiresOn }}</span>
+            </div>
+
             <div class="flex justify-end w-full sm:flex-1 sm:pt-6">
-              <button
-                type="submit"
-                data-testid="btn-add-item"
-                class="btn-primary w-full sm:w-auto"
-              >
+              <button type="submit" data-testid="item-submit" class="btn-primary w-full sm:w-auto">
                 Adicionar Item
               </button>
             </div>
@@ -371,23 +351,34 @@ async function testRecipes() {
           </li>
           <li v-for="item in pantryItems" :key="item.id"
             data-testid="pantry-item"
-            class="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-gray-200 hover:translate-x-1 hover:border-slate-300 transition-transform">
-            <div class="flex items-center gap-4">
-              <strong data-testid="pantry-item-name" class="text-lg font-semibold">{{ item.name }}</strong>
+            :data-name="item.name"
+            :data-expiring="isExpiringSoon(item, pantry.now)"
+            :class="[
+              'flex justify-between items-center p-4 rounded-xl border hover:translate-x-1 transition-transform',
+              isExpiringSoon(item, pantry.now)
+                ? 'bg-amber-50 border-amber-300 border-l-4 border-l-amber-500'
+                : 'bg-slate-50 border-gray-200 hover:border-slate-300',
+            ]">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+              <strong class="text-lg font-semibold">{{ item.name }}</strong>
               <span class="text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600 font-medium capitalize">
                 🏷️ {{ item.category }}
+              </span>
+              <span v-if="item.expirationDate" data-testid="pantry-item-expiry"
+                :class="[
+                  'text-xs px-3 py-1 rounded-full font-semibold',
+                  isExpired(item, pantry.now) ? 'bg-red-100 text-red-700'
+                    : isExpiringSoon(item, pantry.now) ? 'bg-amber-100 text-amber-800'
+                    : 'bg-slate-100 text-slate-500',
+                ]">
+                ⏳ {{ expiryLabel(item.expirationDate, pantry.now) }}
               </span>
             </div>
             <div class="flex items-center gap-3">
               <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">
                 {{ item.quantity }} {{ item.unit }}
               </span>
-              <button
-                data-testid="btn-remove-item"
-                @click="removeItem(item.id)"
-                class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all"
-                title="Remover item"
-              >
+              <button @click="removeItem(item.id)" data-testid="pantry-item-remove" class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Remover item">
                 ❌
               </button>
             </div>
