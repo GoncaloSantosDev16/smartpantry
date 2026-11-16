@@ -29,21 +29,21 @@ public class ExpiringAlertSteps {
 
     @When("^I add the product \"([^\"]*)\" expiring in (\\d+) days?\$")
     public void adicionarProduto(String nome, int dias) {
-        WebUI.waitForElementPresent(Suporte.porTestId('item-name'), Suporte.ESPERA)
+        WebUI.waitForElementPresent(Suporte.porTestId('input-name'), Suporte.ESPERA)
 
         // input type="date" recebe sempre AAAA-MM-DD, independentemente da língua do browser
         String validade = LocalDate.now().plusDays(dias).toString()
 
-        Suporte.escreverCampo('item-name', nome)
+        Suporte.escreverCampo('input-name', nome)
         Suporte.escreverCampo('item-expiration', validade)
-        WebUI.click(Suporte.porTestId('item-submit'))
+        WebUI.click(Suporte.porTestId('btn-add-item'))
 
         WebUI.waitForElementPresent(itemDaDespensa(nome), Suporte.ESPERA)
     }
 
     @When("^I remove the product \"([^\"]*)\" from the pantry\$")
     public void removerProduto(String nome) {
-        WebUI.click(Suporte.porCss("[data-testid='pantry-item'][data-name='" + nome + "'] [data-testid='pantry-item-remove']"))
+        WebUI.click(Suporte.porCss("[data-testid='pantry-item'][data-name='" + nome + "'] [data-testid='btn-remove-item']"))
         WebUI.waitForElementNotPresent(itemDaDespensa(nome), Suporte.ESPERA)
     }
 

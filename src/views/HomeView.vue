@@ -213,7 +213,7 @@ async function testRecipes() {
     <!-- ZONA 1: ADICIONAR À DESPENSA -->
       <section class="card">
         <div class="flex flex-col mb-6 gap-4">
-          <h2 class="text-2xl font-bold text-gray-800 m-0">📦 Novo Ingrediente</h2>
+          <h2 class="text-2xl font-bold text-gray-800 m-0" data-testid="form-title">{{ editingId ? '✏️ Editar Ingrediente' : '📦 Novo Ingrediente' }}</h2>
 
           <!-- TABS DE SELEÇÃO DE MODO -->
           <div class="flex bg-gray-100 p-1 rounded-lg w-full max-w-md mx-auto sm:mx-0">
@@ -266,9 +266,9 @@ async function testRecipes() {
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-[2]">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</label>
-              <input v-model="newItemName" data-testid="item-name" type="text" placeholder="Ex: Arroz agulha..."
+              <input v-model="newItemName" data-testid="input-name" type="text" placeholder="Ex: Arroz agulha..."
                 :class="{ 'has-error': formErrors.name }" />
-              <span v-if="formErrors.name" class="text-xs font-medium text-red-500">{{ formErrors.name }}</span>
+              <span v-if="formErrors.name" data-testid="error-name" class="text-xs font-medium text-red-500">{{ formErrors.name }}</span>
             </div>
 
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
@@ -296,9 +296,9 @@ async function testRecipes() {
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantidade</label>
-              <input v-model="newItemQty" data-testid="item-qty" type="number" min="0.1" step="0.1"
+              <input v-model="newItemQty" data-testid="input-quantity" type="number" min="0.1" step="0.1"
                 :class="{ 'has-error': formErrors.quantity }" />
-              <span v-if="formErrors.quantity" class="text-xs font-medium text-red-500">{{ formErrors.quantity }}</span>
+              <span v-if="formErrors.quantity" data-testid="error-quantity" class="text-xs font-medium text-red-500">{{ formErrors.quantity }}</span>
             </div>
 
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
@@ -328,9 +328,14 @@ async function testRecipes() {
               <span v-if="formErrors.expiresOn" class="text-xs font-medium text-red-500">{{ formErrors.expiresOn }}</span>
             </div>
 
-            <div class="flex justify-end w-full sm:flex-1 sm:pt-6">
-              <button type="submit" data-testid="item-submit" class="btn-primary w-full sm:w-auto">
-                Adicionar Item
+            <div class="flex justify-end gap-2 w-full sm:flex-1 sm:pt-6">
+              <!-- US-04: em modo de edição, "Guardar" + "Cancelar" -->
+              <button v-if="editingId" type="button" data-testid="btn-cancel-edit" @click="resetForm"
+                class="w-full sm:w-auto rounded-[10px] border border-gray-300 bg-white px-5 font-semibold text-gray-600 hover:bg-gray-50 h-[45px]">
+                Cancelar
+              </button>
+              <button type="submit" data-testid="btn-add-item" class="btn-primary w-full sm:w-auto">
+                {{ editingId ? 'Guardar' : 'Adicionar Item' }}
               </button>
             </div>
           </div>
@@ -360,7 +365,7 @@ async function testRecipes() {
                 : 'bg-slate-50 border-gray-200 hover:border-slate-300',
             ]">
             <div class="flex flex-wrap items-center gap-2 sm:gap-4">
-              <strong class="text-lg font-semibold">{{ item.name }}</strong>
+              <strong data-testid="pantry-item-name" class="text-lg font-semibold">{{ item.name }}</strong>
               <span class="text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600 font-medium capitalize">
                 🏷️ {{ item.category }}
               </span>
@@ -375,10 +380,13 @@ async function testRecipes() {
               </span>
             </div>
             <div class="flex items-center gap-3">
-              <span class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">
+              <span data-testid="pantry-item-qty" class="bg-[#42b883] text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm">
                 {{ item.quantity }} {{ item.unit }}
               </span>
-              <button @click="removeItem(item.id)" data-testid="pantry-item-remove" class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Remover item">
+              <button @click="startEdit(item)" data-testid="btn-edit-item" class="text-blue-500 hover:bg-blue-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Editar item">
+                ✏️
+              </button>
+              <button @click="removeItem(item.id)" data-testid="btn-remove-item" class="text-red-500 hover:bg-red-100 hover:scale-110 p-1.5 rounded-full transition-all" title="Remover item">
                 ❌
               </button>
             </div>
