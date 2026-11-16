@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { lookupProduct } from '@/services/productsApi'
 import { searchRecipes } from '@/services/recipesApi'
 import BarcodeScanner from '@/components/BarcodeScanner.vue'
-import ImageBarcodeUpload from '@/components/ImageBarcodeUpload.vue' 
+import ImageBarcodeUpload from '@/components/ImageBarcodeUpload.vue'
 import ShoppingListButton from '@/components/ShoppingListButton.vue'
 import ShoppingListDrawer from '@/components/ShoppingListDrawer.vue'
 import { validateItem, parseQuantity, guessCategory, UNITS } from '@/services/pantryHelpers'
@@ -183,7 +183,7 @@ async function testRecipes() {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans">
+  <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans" data-testid="home">
     <header class="text-center mb-10">
       <div class="flex justify-end items-center gap-3 mb-4">
         <ProfileSwitcher />
@@ -214,23 +214,29 @@ async function testRecipes() {
       <section class="card">
         <div class="flex flex-col mb-6 gap-4">
           <h2 class="text-2xl font-bold text-gray-800 m-0">📦 Novo Ingrediente</h2>
-          
+
           <!-- TABS DE SELEÇÃO DE MODO -->
           <div class="flex bg-gray-100 p-1 rounded-lg w-full max-w-md mx-auto sm:mx-0">
-            <button 
-              @click="setInputMode('manual')" 
+            <button
+              type="button"
+              data-testid="tab-manual"
+              @click="setInputMode('manual')"
               :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'manual' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
             >
               ✍️ Manual
             </button>
-            <button 
-              @click="setInputMode('camera')" 
+            <button
+              type="button"
+              data-testid="tab-camera"
+              @click="setInputMode('camera')"
               :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'camera' ? 'bg-[#42b883] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700']"
             >
               📷 Câmara
             </button>
-            <button 
-              @click="setInputMode('upload')" 
+            <button
+              type="button"
+              data-testid="tab-upload"
+              @click="setInputMode('upload')"
               :class="['flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-colors', activeInputMode === 'upload' ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700']"
             >
               🖼️ Imagem
@@ -239,17 +245,24 @@ async function testRecipes() {
         </div>
 
         <!-- RENDERIZAÇÃO CONDICIONAL DOS COMPONENTES DE LEITURA -->
-        <div v-if="activeInputMode === 'camera'" class="mb-6 border-2 border-dashed border-[#42b883] rounded-xl p-4 bg-green-50">
+        <div
+          v-if="activeInputMode === 'camera'"
+          data-testid="scanner-panel"
+          class="mb-6 border-2 border-dashed border-[#42b883] rounded-xl p-4 bg-green-50"
+        >
           <BarcodeScanner @scanned="handleScan" />
         </div>
 
-        <div v-if="activeInputMode === 'upload'" class="mb-6 border-2 border-dashed border-blue-400 rounded-xl p-4 bg-blue-50">
+        <div
+          v-if="activeInputMode === 'upload'"
+          data-testid="upload-panel"
+          class="mb-6 border-2 border-dashed border-blue-400 rounded-xl p-4 bg-blue-50"
+        >
           <ImageBarcodeUpload @scanned="handleScan" />
         </div>
 
-        <!-- O teu formulário original mantém-se igualzinho a partir daqui -->
-        <form @submit.prevent="handleAddItem" class="flex flex-col gap-5">
-           <!-- ... o resto do teu form ... -->
+        <!-- FORMULÁRIO -->
+        <form @submit.prevent="handleAddItem" class="flex flex-col gap-5" data-testid="item-form">
           <div class="flex flex-col sm:flex-row gap-4 items-start">
             <div class="flex flex-col gap-1.5 w-full sm:flex-[2]">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</label>
@@ -260,13 +273,23 @@ async function testRecipes() {
 
             <div class="flex flex-col gap-1.5 w-full sm:flex-1">
               <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Categoria</label>
-              <input v-model="newItemCategory" list="category-options" type="text"
-                placeholder="Seleciona ou escreve uma..." :class="{ 'has-error': formErrors.category }" />
+              <input
+                v-model="newItemCategory"
+                data-testid="input-category"
+                list="category-options"
+                type="text"
+                placeholder="Seleciona ou escreve uma..."
+                :class="{ 'has-error': formErrors.category }"
+              />
 
               <datalist id="category-options">
                 <option v-for="cat in DEFAULT_CATEGORIES" :key="cat" :value="cat"></option>
               </datalist>
-              <span v-if="formErrors.category" class="text-xs font-medium text-red-500">{{ formErrors.category }}</span>
+              <span
+                v-if="formErrors.category"
+                data-testid="error-category"
+                class="text-xs font-medium text-red-500"
+              >{{ formErrors.category }}</span>
             </div>
           </div>
 
@@ -285,12 +308,14 @@ async function testRecipes() {
               >
               <select
                 v-model="newItemUnit"
+                data-testid="select-unit"
                 :class="{ 'has-error': formErrors.unit }"
               >
                 <option v-for="u in UNITS" :key="u" :value="u">{{ u }}</option>
               </select>
               <span
                 v-if="formErrors.unit"
+                data-testid="error-unit"
                 class="text-xs font-medium text-red-500"
                 >{{ formErrors.unit }}</span
               >
@@ -317,8 +342,9 @@ async function testRecipes() {
         <h2 class="text-2xl font-bold text-gray-800 mb-6">
           📋 A Minha Despensa
         </h2>
-        <ul class="flex flex-col gap-3 m-0 p-0 list-none">
+        <ul class="flex flex-col gap-3 m-0 p-0 list-none" data-testid="pantry-list">
           <li v-if="pantryItems.length === 0"
+            data-testid="pantry-empty"
             class="text-center text-gray-500 py-12 px-4 bg-slate-50 rounded-xl border-2 border-dashed border-gray-200">
             <div class="text-4xl mb-2 opacity-50">🍽️</div>
             A tua despensa está vazia. Adiciona produtos acima.
