@@ -3,16 +3,36 @@ import io.cucumber.java.en.When
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.And
 import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
+import com.kms.katalon.core.webui.driver.DriverFactory
 import com.kms.katalon.core.model.FailureHandling
 import com.kms.katalon.core.testobject.TestObject
 import com.kms.katalon.core.testobject.ConditionType
 
+/**
+ * US-03 / US-04 — Gestão da despensa (adicionar, validar, editar, cancelar, remover).
+ *
+ * Os elementos são localizados pelos data-testid da HomeView. As classes CSS antigas
+ * (item-name, error-text, qty-badge, edit, delete) desapareceram com a migração para
+ * Tailwind e a categoria passou de <select> para <input> com sugestões (datalist).
+ */
 class GestaoDespensaSteps {
 
 	TestObject criarObjeto(String xpath) {
-		TestObject to = new TestObject()
+		TestObject to = new TestObject(xpath)
 		to.addProperty("xpath", ConditionType.EQUALS, xpath)
 		return to
+	}
+
+	TestObject porTestId(String testId) {
+		return criarObjeto("//*[@data-testid='" + testId + "']")
+	}
+
+	TestObject nomeNaLista(String nome) {
+		return criarObjeto("//*[@data-testid='pantry-item-name' and normalize-space(.)='" + nome + "']")
+	}
+
+	TestObject acaoDoItem(String nome, String testId) {
+		return criarObjeto("//li[@data-testid='pantry-item' and @data-name='" + nome + "']//*[@data-testid='" + testId + "']")
 	}
 
 	// ==========================================
@@ -20,42 +40,32 @@ class GestaoDespensaSteps {
 	// ==========================================
 	@Given("que acedo à página principal da aplicação")
 	def acederPaginaPrincipal() {
-		WebUI.openBrowser('')
+		// O Hooks.groovy (smartpantry.steps) pode já ter aberto o browser
+		try {
+			DriverFactory.getWebDriver()
+		} catch (Exception semBrowser) {
+			WebUI.openBrowser('')
+		}
 		WebUI.navigateToUrl('http://localhost:5173')
 		WebUI.waitForPageLoad(10)
-		WebUI.delay(2) 
-		
-		TestObject btnContinuar = criarObjeto("//button[contains(text(), 'Continuar')]")
-		TestObject btnConcluir = criarObjeto("//button[contains(text(), 'Concluir')]")
 
-		if (WebUI.waitForElementVisible(btnContinuar, 3, FailureHandling.OPTIONAL)) {
-			WebUI.click(btnContinuar)
-			WebUI.delay(1)
-			
-			if (WebUI.waitForElementVisible(btnContinuar, 2, FailureHandling.OPTIONAL)) {
-				WebUI.click(btnContinuar)
-				WebUI.delay(1)
+		// Primeiro arranque: conclui o onboarding com os valores por defeito
+		if (WebUI.waitForElementPresent(porTestId('onboarding-next'), 3, FailureHandling.OPTIONAL)) {
+			while (WebUI.waitForElementPresent(porTestId('onboarding-next'), 1, FailureHandling.OPTIONAL)) {
+				WebUI.click(porTestId('onboarding-next'))
 			}
-			
-			if (WebUI.waitForElementVisible(btnConcluir, 2, FailureHandling.OPTIONAL)) {
-				WebUI.click(btnConcluir)
-			}
+			WebUI.click(porTestId('onboarding-finish'))
 		}
-		
-		WebUI.waitForElementVisible(criarObjeto("//h1[contains(text(), 'SmartPantry')]"), 5)
+
+		WebUI.waitForElementVisible(porTestId('input-name'), 10)
 	}
 
 	@Given("a despensa tem pelo menos o item {string} adicionado")
 	def garantirItemNaDespensa(String nomeItem) {
-		TestObject item = criarObjeto("//strong[text()='" + nomeItem + "']")
-		
-		if (!WebUI.verifyElementPresent(item, 2, FailureHandling.OPTIONAL)) {
-			TestObject inputNome = criarObjeto("//input[@placeholder='Ex: Arroz agulha...']")
-			TestObject btnAdicionar = criarObjeto("//button[contains(text(), 'Adicionar')]")
-			
-			WebUI.setText(inputNome, nomeItem)
-			WebUI.click(btnAdicionar)
-			WebUI.delay(1)
+		if (!WebUI.waitForElementPresent(nomeNaLista(nomeItem), 2, FailureHandling.OPTIONAL)) {
+			WebUI.setText(porTestId('input-name'), nomeItem)
+			WebUI.click(porTestId('btn-add-item'))
+			WebUI.waitForElementPresent(nomeNaLista(nomeItem), 5)
 		}
 	}
 
@@ -73,16 +83,15 @@ class GestaoDespensaSteps {
 	}
 
 	def logicaPreencherNome(String texto) {
-		TestObject inputNome = criarObjeto("//input[@placeholder='Ex: Arroz agulha...']")
+		TestObject inputNome = porTestId('input-name')
 		WebUI.waitForElementVisible(inputNome, 5)
-		WebUI.clearText(inputNome)
 		WebUI.setText(inputNome, texto)
 	}
 
 	@When("seleciono a categoria {string}")
 	def selecionarCategoria(String categoria) {
-		TestObject selectCategoria = criarObjeto("//label[text()='Categoria']/following-sibling::select")
-		WebUI.selectOptionByLabel(selectCategoria, categoria, false)
+		// A categoria é um campo de texto com sugestões (pode ser escolhida ou escrita)
+		WebUI.setText(porTestId('input-category'), categoria)
 	}
 
 	@When("insiro a quantidade {string}")
@@ -96,24 +105,28 @@ class GestaoDespensaSteps {
 	}
 
 	def logicaInserirQuantidade(String qtd) {
-		TestObject inputQt = criarObjeto("//input[@type='number']")
-		WebUI.clearText(inputQt)
-		WebUI.setText(inputQt, qtd)
+		WebUI.setText(porTestId('input-quantity'), qtd)
 	}
 
 	@When("tento submeter o formulário com o campo {string} vazio")
 	def submeterFormularioVazio(String campo) {
-		TestObject inputNome = criarObjeto("//input[@placeholder='Ex: Arroz agulha...']")
+		TestObject inputNome = porTestId('input-name')
 		WebUI.waitForElementVisible(inputNome, 5)
-		WebUI.sendKeys(inputNome, '\u0008\u0008\u0008\u0008\u0008\u0008\u0008\u0008\u0008\u0008')
-		WebUI.clearText(inputNome)
+		WebUI.setText(inputNome, '')
 	}
 
 	@When("clico no botão {string}")
 	def clicarBotaoDinamico(String botao) {
-		String textoNoEcra = botao == "Adicionar Item" ? "Adicionar" : botao
-		
-		TestObject btn = criarObjeto("//button[contains(text(), '" + textoNoEcra + "')]")
+		// "Adicionar Item" e "Guardar" são o mesmo botão de submissão (muda de texto ao editar)
+		Map<String, String> porNome = [
+			'Adicionar Item': 'btn-add-item',
+			'Adicionar'     : 'btn-add-item',
+			'Guardar'       : 'btn-add-item',
+			'Cancelar'      : 'btn-cancel-edit',
+		]
+		TestObject btn = porNome.containsKey(botao)
+			? porTestId(porNome[botao])
+			: criarObjeto("//button[contains(normalize-space(.), '" + botao + "')]")
 		WebUI.click(btn)
 		WebUI.delay(1)
 	}
@@ -137,16 +150,13 @@ class GestaoDespensaSteps {
 	}
 
 	def logicaVerificarProdutoVisivel(String prod) {
-		TestObject itemAdicionado = criarObjeto("//strong[contains(@class, 'item-name') and text()='" + prod + "']")
-		WebUI.waitForElementVisible(itemAdicionado, 5)
-		WebUI.verifyElementPresent(itemAdicionado, 5)
+		WebUI.verifyElementVisible(nomeNaLista(prod))
 	}
 
 	@Then("o sistema deve apresentar uma mensagem de erro indicando que o nome é obrigatório")
 	def verificarMensagemErro() {
-		TestObject msgErro = criarObjeto("//span[contains(@class, 'error-text') and contains(text(), 'obrigatório')]")
+		TestObject msgErro = criarObjeto("//*[@data-testid='error-name' and contains(., 'obrigatório')]")
 		WebUI.waitForElementVisible(msgErro, 5)
-		WebUI.verifyElementPresent(msgErro, 5)
 	}
 
 	@Then("o formulário deve voltar ao modo de criação {string}")
@@ -157,17 +167,19 @@ class GestaoDespensaSteps {
 	@Then("o formulário deve ser limpo e voltar ao modo {string}")
 	def verificarModoFormularioLimpo(String tituloEsperado) {
 		logicaVerificarTituloForm(tituloEsperado)
+		WebUI.verifyElementAttributeValue(porTestId('input-name'), 'value', '', 3)
+		WebUI.verifyElementNotPresent(porTestId('btn-cancel-edit'), 3)
 	}
 
 	def logicaVerificarTituloForm(String titulo) {
-		TestObject tituloForm = criarObjeto("//h2[contains(text(), '" + titulo + "')]")
+		TestObject tituloForm = criarObjeto("//*[@data-testid='form-title' and contains(normalize-space(.), '" + titulo + "')]")
 		WebUI.verifyElementPresent(tituloForm, 3)
 	}
 
 	@And("o item {string} deve aparecer na lista da despensa com a quantidade {string}")
 	def verificarProdutoComQuantidade(String produto, String qtd) {
 		logicaVerificarProdutoVisivel(produto)
-		TestObject qtdBadge = criarObjeto("//strong[text()='" + produto + "']/ancestor::li//span[contains(@class, 'qty-badge') and contains(text(), '" + qtd + "')]")
+		TestObject qtdBadge = criarObjeto("//li[@data-testid='pantry-item' and @data-name='" + produto + "']//*[@data-testid='pantry-item-qty' and contains(normalize-space(.), '" + qtd + "')]")
 		WebUI.verifyElementPresent(qtdBadge, 3)
 	}
 
@@ -182,8 +194,7 @@ class GestaoDespensaSteps {
 	}
 
 	def logicaVerificarItemRemovido(String n) {
-		TestObject item = criarObjeto("//strong[text()='" + n + "']")
-		WebUI.verifyElementNotPresent(item, 2)
+		WebUI.verifyElementNotPresent(nomeNaLista(n), 3)
 	}
 
 	// ==========================================
@@ -191,17 +202,12 @@ class GestaoDespensaSteps {
 	// ==========================================
 	@When("o utilizador clica no botão de editar do item {string}")
 	def clicarEditar(String nomeItem) {
-		String xpath = "//strong[text()='" + nomeItem + "']/ancestor::li//button[contains(@class, 'edit')]"
-		TestObject btnEdit = criarObjeto(xpath)
-		WebUI.click(btnEdit)
+		WebUI.click(acaoDoItem(nomeItem, 'btn-edit-item'))
+		WebUI.waitForElementPresent(porTestId('btn-cancel-edit'), 3)
 	}
 
 	@When("o utilizador clica no botão de remover do item {string}")
 	def clicarRemover(String nomeItem) {
-		String xpath = "//strong[text()='" + nomeItem + "']/ancestor::li//button[contains(@class, 'delete')]"
-		TestObject btnDelete = criarObjeto(xpath)
-		WebUI.click(btnDelete)
+		WebUI.click(acaoDoItem(nomeItem, 'btn-remove-item'))
 	}
-
-
 }
