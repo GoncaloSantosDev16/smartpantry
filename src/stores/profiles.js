@@ -5,6 +5,12 @@ import {
   lerPerfilAtivo,
   limparPerfilAtivo,
 } from "@/services/activeProfileStorage";
+import {
+  guardarFiltrosPessoais,
+  lerFiltrosPessoais,
+  perfilParaPedido,
+  restricoesDoPerfil,
+} from "@/services/personalFilters";
 
 // Carregamento em curso, partilhado por todas as chamadas. Sem isto, várias
 // navegações seguidas disparavam leituras simultâneas à base de dados.
@@ -18,6 +24,9 @@ export const useProfilesStore = defineStore("profiles", {
     // SCRUM-104 — id escolhido pelo utilizador. null significa "nenhuma
     // escolha explícita", e nesse caso o perfil ativo é o default.
     activeProfileId: null,
+    // SCRUM-122 — filtros pessoais nas receitas. Começam ligados e a escolha
+    // vale para todos os perfis.
+    personalFiltersEnabled: lerFiltrosPessoais(),
   }),
   getters: {
     hasProfiles: (s) => s.profiles.length > 0,
@@ -30,6 +39,20 @@ export const useProfilesStore = defineStore("profiles", {
       s.profiles.find((p) => p.id === s.activeProfileId) ??
       s.profiles.find((p) => p.isDefault) ??
       null,
+
+    // SCRUM-120 — restrições do perfil ativo, já com os filtros aplicados.
+    // Com os filtros desligados, as listas vêm vazias.
+    activeRestrictions() {
+      return restricoesDoPerfil(
+        this.activeProfile,
+        this.personalFiltersEnabled,
+      );
+    },
+
+    // SCRUM-121 — perfil a enviar à GenAI e à API de receitas.
+    activeRequestProfile() {
+      return perfilParaPedido(this.activeProfile, this.personalFiltersEnabled);
+    },
   },
   actions: {
     async load({ forcar = false } = {}) {
@@ -81,6 +104,13 @@ export const useProfilesStore = defineStore("profiles", {
       // Se o armazenamento falhar, a troca vale na mesma até a app fechar.
       guardarPerfilAtivo(perfil.id);
       return true;
+    },
+
+    /** SCRUM-122 — Liga ou desliga os filtros pessoais e guarda a escolha. */
+    setPersonalFilters(ligado) {
+      this.personalFiltersEnabled = Boolean(ligado);
+      // Se o armazenamento falhar, a escolha vale na mesma até a app fechar.
+      guardarFiltrosPessoais(this.personalFiltersEnabled);
     },
 
     /**
