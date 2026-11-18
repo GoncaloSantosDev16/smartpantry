@@ -207,4 +207,77 @@ describe("profiles store", () => {
       expect(store.activeProfile).toBeNull();
     });
   });
+  // ------------------------------------------------------------------
+  // US-11 — filtros pessoais (SCRUM-120, SCRUM-121, SCRUM-122)
+  // ------------------------------------------------------------------
+
+  describe("filtros pessoais", () => {
+    async function criarDoisPerfis() {
+      const store = useProfilesStore();
+      const casa = await store.createProfile({
+        ...data,
+        name: "Casa",
+        servings: 4,
+        allergies: ["peanut"],
+      });
+      const ginasio = await store.createProfile({
+        ...data,
+        name: "Ginásio",
+        allergies: ["lactose"],
+      });
+      return { store, casa, ginasio };
+    }
+
+    it("os filtros começam ligados", () => {
+      expect(useProfilesStore().personalFiltersEnabled).toBe(true);
+    });
+
+    it("as restrições ativas são as do perfil ativo", async () => {
+      const { store } = await criarDoisPerfis();
+      expect(store.activeRestrictions.allergies).toEqual(["peanut"]);
+    });
+
+    it("trocar de perfil troca as restrições ativas", async () => {
+      const { store, ginasio } = await criarDoisPerfis();
+      store.setActiveProfile(ginasio.id);
+      expect(store.activeRestrictions.allergies).toEqual(["lactose"]);
+    });
+
+    it("desligar os filtros esvazia as restrições ativas", async () => {
+      const { store } = await criarDoisPerfis();
+      store.setPersonalFilters(false);
+      expect(store.activeRestrictions).toEqual({
+        diets: [],
+        allergies: [],
+        excludedIngredients: [],
+      });
+    });
+
+    it("o perfil do pedido mantém as doses com os filtros desligados", async () => {
+      const { store } = await criarDoisPerfis();
+      store.setPersonalFilters(false);
+      expect(store.activeRequestProfile.servings).toBe(4);
+      expect(store.activeRequestProfile.allergies).toEqual([]);
+    });
+
+    it("os filtros desligados mantêm-se ao trocar de perfil", async () => {
+      const { store, ginasio } = await criarDoisPerfis();
+      store.setPersonalFilters(false);
+      store.setActiveProfile(ginasio.id);
+      expect(store.personalFiltersEnabled).toBe(false);
+      expect(store.activeRestrictions.allergies).toEqual([]);
+    });
+
+    it("a escolha sobrevive a um novo arranque da app", async () => {
+      await criarDoisPerfis();
+      useProfilesStore().setPersonalFilters(false);
+
+      setActivePinia(createPinia());
+      expect(useProfilesStore().personalFiltersEnabled).toBe(false);
+    });
+
+    it("sem perfil ativo, não há restrições", () => {
+      expect(useProfilesStore().activeRestrictions.allergies).toEqual([]);
+    });
+  });
 });

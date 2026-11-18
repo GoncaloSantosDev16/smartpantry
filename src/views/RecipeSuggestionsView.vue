@@ -3,57 +3,75 @@
 //   SCRUM-116: lista de ingredientes da despensa -> buildPantryIngredientList
 //   SCRUM-117: pesquisa no Spoonacular            -> discoverRecipes
 //   SCRUM-118: resultados em grelha               -> toRecipeCards + RecipeCard
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { db } from '@/db'
-import { useProfilesStore } from '@/stores/profiles'
-import { useRecipeGenerator } from '@/composables/useRecipeGenerator'
-import { discoverRecipes } from '@/services/recipeDiscovery'
-import { buildPantryIngredientList } from '@/services/pantryIngredients'
-import { toRecipeCards } from '@/services/recipeCards'
-import GenAIStatus from '@/components/GenAIStatus.vue'
-import RecipeCard from '@/components/RecipeCard.vue'
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { db } from "@/db";
+import { useProfilesStore } from "@/stores/profiles";
+import { useRecipeGenerator } from "@/composables/useRecipeGenerator";
+import { discoverRecipes } from "@/services/recipeDiscovery";
+import { buildPantryIngredientList } from "@/services/pantryIngredients";
+import { toRecipeCards } from "@/services/recipeCards";
+import GenAIStatus from "@/components/GenAIStatus.vue";
+import RecipeCard from "@/components/RecipeCard.vue";
+import PersonalFiltersToggle from "@/components/PersonalFiltersToggle.vue";
 
-const profiles = useProfilesStore()
+const profiles = useProfilesStore();
 
-const pantry = ref([])
-const pantryLoaded = ref(false)
-const pantryError = ref(false)
+const pantry = ref([]);
+const pantryLoaded = ref(false);
+const pantryError = ref(false);
 
 // O composable só gere loading/erro/cancelamento; a resposta fica em `result`.
-const { loading, error, recipe: result, generate, cancel } = useRecipeGenerator(async (input, options) => {
-  const response = await discoverRecipes(input, options)
-  return response.status === 'ok' ? { status: 'ok', recipe: response } : response
-})
+const {
+  loading,
+  error,
+  recipe: result,
+  generate,
+  cancel,
+} = useRecipeGenerator(async (input, options) => {
+  const response = await discoverRecipes(input, options);
+  return response.status === "ok"
+    ? { status: "ok", recipe: response }
+    : response;
+});
 
-const cards = computed(() => (result.value ? toRecipeCards(result.value.recipes, result.value.pantryNames) : []))
-const noResults = computed(() => !loading.value && result.value !== null && cards.value.length === 0)
-const canSearch = computed(() => pantry.value.length > 0 && !loading.value)
+const cards = computed(() =>
+  result.value
+    ? toRecipeCards(result.value.recipes, result.value.pantryNames)
+    : [],
+);
+const noResults = computed(
+  () => !loading.value && result.value !== null && cards.value.length === 0,
+);
+const canSearch = computed(() => pantry.value.length > 0 && !loading.value);
 
 onMounted(async () => {
   try {
-    pantry.value = buildPantryIngredientList(await db.pantryItems.toArray())
+    pantry.value = buildPantryIngredientList(await db.pantryItems.toArray());
   } catch (err) {
-    pantryError.value = true
-    console.error('Erro ao carregar a despensa:', err)
+    pantryError.value = true;
+    console.error("Erro ao carregar a despensa:", err);
   } finally {
-    pantryLoaded.value = true
+    pantryLoaded.value = true;
   }
-})
+});
 
-onBeforeUnmount(cancel)
+onBeforeUnmount(cancel);
 
 function search() {
-  if (!canSearch.value) return
-  const p = profiles.activeProfile ?? {}
+  if (!canSearch.value) return;
+  // US-11: restrições do perfil ativo, vazias se os filtros estiverem desligados.
   generate({
     ingredients: pantry.value,
-    profile: { diets: p.diets, allergies: p.allergies, excludedIngredients: p.excludedIngredients },
-  })
+    profile: profiles.activeRequestProfile,
+  });
 }
 </script>
 
 <template>
-  <div class="mx-auto max-w-5xl px-4 py-6 font-sans text-gray-800" data-testid="recipes-view">
+  <div
+    class="mx-auto max-w-5xl px-4 py-6 font-sans text-gray-800"
+    data-testid="recipes-view"
+  >
     <header class="mb-6 flex items-center gap-3">
       <RouterLink
         to="/"
@@ -64,19 +82,25 @@ function search() {
         ←
       </RouterLink>
       <div>
-        <h1 class="m-0 text-2xl font-extrabold text-[#42b883]">🍳 Receitas com a tua despensa</h1>
+        <h1 class="m-0 text-2xl font-extrabold text-[#42b883]">
+          🍳 Receitas com a tua despensa
+        </h1>
         <p v-if="profiles.activeProfile" class="m-0 text-sm text-gray-500">
           Perfil: {{ profiles.activeProfile.name }}
         </p>
       </div>
     </header>
 
+    <PersonalFiltersToggle />
     <section class="card mb-6">
       <h2 class="m-0 mb-3 text-lg font-bold">
-        📦 Na despensa <span class="font-normal text-gray-500">({{ pantry.length }})</span>
+        📦 Na despensa
+        <span class="font-normal text-gray-500">({{ pantry.length }})</span>
       </h2>
 
-      <p v-if="pantryError" class="m-0 text-red-600" role="alert">Não foi possível ler a despensa.</p>
+      <p v-if="pantryError" class="m-0 text-red-600" role="alert">
+        Não foi possível ler a despensa.
+      </p>
 
       <p
         v-else-if="pantryLoaded && pantry.length === 0"
@@ -93,7 +117,10 @@ function search() {
           data-testid="pantry-ingredient"
           class="rounded-full bg-slate-100 px-2.5 py-1 text-sm"
         >
-          {{ item.name }} <span class="text-gray-500">· {{ item.quantity }} {{ item.unit }}</span>
+          {{ item.name }}
+          <span class="text-gray-500"
+            >· {{ item.quantity }} {{ item.unit }}</span
+          >
         </li>
       </ul>
 
@@ -116,7 +143,11 @@ function search() {
       @retry="search"
     />
 
-    <p v-if="noResults" data-testid="recipes-no-results" class="py-8 text-center text-gray-500">
+    <p
+      v-if="noResults"
+      data-testid="recipes-no-results"
+      class="py-8 text-center text-gray-500"
+    >
       Não foram encontradas receitas com estes ingredientes.
     </p>
 
