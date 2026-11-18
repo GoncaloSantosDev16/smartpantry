@@ -12,7 +12,7 @@ import { isExpiringSoon, isExpired, expiryLabel } from '@/services/expiration'
 import ExpiringAlert from '@/components/ExpiringAlert.vue'
 import ProfileSwitcher from '@/components/ProfileSwitcher.vue'
 import NewCategoryModal from '@/components/NewCategoryModal.vue'
-import { loadCustomCategories, saveCustomCategory } from '@/services/categories'
+import { useCategoriesStore } from '@/stores/categories'
 
 // --- ESTADOS DA DESPENSA ---
 const pantry = usePantryStore();
@@ -26,21 +26,22 @@ const newItemUnit = ref('un')
 const newItemCategory = ref('Other')
 const newItemExpiration = ref('') // US-06: AAAA-MM-DD (input type="date")
 const formErrors = ref({})
-const DEFAULT_CATEGORIES = ['Laticínios', 'Bebidas', 'Cereais', 'Snacks', 'Carne', 'Fruta', 'Vegetais', 'Outro']
-// US-05: categorias personalizadas
+
+// US-05: categorias personalizadas (Pinia + Dexie)
+const categoriesStore = useCategoriesStore()
 const isCategoryModalOpen = ref(false)
-const customCategories = ref([])
-const allCategories = computed(() => [...DEFAULT_CATEGORIES, ...customCategories.value])
+const allCategories = computed(() => categoriesStore.all)
 
 async function onCategoryCreated(name) {
-  customCategories.value.push(name)
-  newItemCategory.value = name
   try {
-    await saveCustomCategory(name)
+    const saved = await categoriesStore.add(name)
+    newItemCategory.value = saved
   } catch (error) {
     console.error('Erro ao guardar a categoria:', error)
   }
 }
+
+
 // NOVO: Estado para controlar a edição (US-04)
 const editingId = ref(null);
 
@@ -51,8 +52,8 @@ const isLoading = ref(false)
 
 // CARREGAR OS DADOS (US-04 - Listar)
 onMounted(async () => {
-  await pantry.load(); // a store trata os erros
-  customCategories.value = await loadCustomCategories()
+  await pantry.load();
+  await categoriesStore.load();
 });
 
 // --- LÓGICA DO FORMULÁRIO (US-03 Adicionar & US-04 Editar) ---
