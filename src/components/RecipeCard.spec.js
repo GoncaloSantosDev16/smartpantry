@@ -132,3 +132,30 @@ describe("SCRUM-126: o botão envia os ingredientes para a Store da Lista de Com
     expect(botao().text()).toContain("Adicionar 1 à lista de compras");
   });
 });
+
+describe('SCRUM-128: o "+" de um ingrediente em falta', () => {
+  beforeEach(async () => {
+    await db.shoppingItems.clear();
+  });
+  afterEach(() => {
+    wrapper?.unmount();
+    wrapper = null;
+  });
+
+  it("só aparece nos ingredientes em falta", async () => {
+    await montar();
+    const mais = wrapper.findAll('[data-testid="recipe-ingredient-to-pantry"]');
+    expect(mais).toHaveLength(2);
+    expect(mais[0].attributes("aria-label")).toBe("Adicionar onion à despensa");
+  });
+
+  it("ao carregar pede para pôr esse ingrediente na despensa", async () => {
+    await montar();
+    await wrapper
+      .find('[data-name="garlic"] [data-testid="recipe-ingredient-to-pantry"]')
+      .trigger("click");
+    expect(wrapper.emitted("add-to-pantry")).toEqual([
+      [{ name: "garlic", amount: "2 cloves", inPantry: false }],
+    ]);
+  });
+});
