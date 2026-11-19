@@ -146,3 +146,39 @@ describe('SCRUM-128: o "+" põe o ingrediente na despensa', () => {
     expect(await db.pantryItems.count()).toBe(2);
   });
 });
+
+describe("SCRUM-127: contador da lista de compras no cabeçalho das receitas", () => {
+  beforeEach(async () => {
+    await db.pantryItems.clear();
+    await db.shoppingItems.clear();
+    await db.pantryItems.add({
+      name: "Arroz",
+      quantity: 1,
+      unit: "kg",
+      category: "Outro",
+      expirationDate: null,
+    });
+  });
+  afterEach(() => {
+    wrapper?.unmount();
+    wrapper = null;
+  });
+
+  const badge = () => wrapper.find('[data-testid="shopping-list-badge"]');
+
+  it("o contador sobe quando se enviam os ingredientes em falta", async () => {
+    await abrirEPesquisar();
+    expect(wrapper.find('[data-testid="shopping-list-button"]').exists()).toBe(
+      true,
+    );
+    expect(badge().exists()).toBe(false);
+
+    await wrapper.find('[data-testid="recipe-add-missing"]').trigger("click");
+
+    await vi.waitFor(() => expect(badge().exists()).toBe(true));
+    expect(badge().text()).toBe("2");
+    expect(
+      wrapper.find('[data-testid="recipe-missing-on-list"]').exists(),
+    ).toBe(true);
+  });
+});

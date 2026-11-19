@@ -16,6 +16,8 @@ import { toPantryItem } from "@/services/recipePantry";
 import GenAIStatus from "@/components/GenAIStatus.vue";
 import RecipeCard from "@/components/RecipeCard.vue";
 import PersonalFiltersToggle from "@/components/PersonalFiltersToggle.vue";
+import ShoppingListButton from "@/components/ShoppingListButton.vue";
+import ShoppingListDrawer from "@/components/ShoppingListDrawer.vue";
 
 const profiles = useProfilesStore();
 const pantryStore = usePantryStore();
@@ -28,6 +30,7 @@ const pantryError = ref(false);
 const addedToPantry = ref([]);
 const addingToPantry = new Set();
 const pantryAddError = ref("");
+const isShoppingListOpen = ref(false);
 
 // O composable só gere loading/erro/cancelamento; a resposta fica em `result`.
 const {
@@ -124,7 +127,13 @@ function search() {
           Perfil: {{ profiles.activeProfile.name }}
         </p>
       </div>
+
+      <div class="ml-auto">
+        <ShoppingListButton @open="isShoppingListOpen = true" />
+      </div>
     </header>
+
+    <ShoppingListDrawer v-model:open="isShoppingListOpen" />
 
     <PersonalFiltersToggle />
     <section class="card mb-6">
