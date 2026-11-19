@@ -1,6 +1,6 @@
 // SCRUM-118 — Mapeia as receitas do Spoonacular (já normalizadas por searchRecipes)
 // para os cartões da grelha.
-import { computeOverlap } from './recipesApi'
+import { matchIngredients, coveragePercent, formatCoverage } from './recipeCoverage'
 
 const formatAmount = (amount, unit) => {
   const n = Number(amount)
@@ -17,16 +17,18 @@ const formatAmount = (amount, unit) => {
 export function toRecipeCards(recipes = [], pantryNames = []) {
   return (Array.isArray(recipes) ? recipes : [])
     .map((recipe) => {
-      const names = (recipe.ingredients ?? []).map((i) => i.name)
-      const overlap = computeOverlap(names, pantryNames)
-      const inStock = new Set(overlap.inStock)
+      const list = recipe.ingredients ?? []
+      // SCRUM-113: cruzar as etiquetas dos ingredientes com a despensa
+      const matches = matchIngredients(list.map((i) => i.name), pantryNames)
 
-      const ingredients = (recipe.ingredients ?? []).map((i) => ({
+      const ingredients = list.map((i, index) => ({
         name: i.name,
         amount: formatAmount(i.amount, i.unit),
-        inPantry: inStock.has(String(i.name ?? '').trim().toLowerCase()),
+        inPantry: matches[index].inPantry,
       }))
       const matched = ingredients.filter((i) => i.inPantry).length
+      // SCRUM-114: percentagem e texto
+      const percent = coveragePercent(matched, ingredients.length)
 
       return {
         id: recipe.id,
@@ -34,7 +36,8 @@ export function toRecipeCards(recipes = [], pantryNames = []) {
         image: recipe.image ?? null,
         totalMinutes: Number.isFinite(recipe.readyInMinutes) ? recipe.readyInMinutes : null,
         servings: recipe.servings ?? null,
-        percent: overlap.percent,
+        percent,
+        coverageText: formatCoverage(percent),
         matched,
         missing: ingredients.length - matched,
         ingredients,
