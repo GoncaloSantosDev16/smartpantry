@@ -1,8 +1,17 @@
 <script setup>
 // SCRUM-118 — Cartão de uma receita encontrada no Spoonacular.
-defineProps({
+// SCRUM-125 — Botão "Adicionar N à lista de compras" com os ingredientes em falta.
+import { computed } from 'vue'
+import { missingIngredients } from '@/services/missingIngredients'
+
+const props = defineProps({
   card: { type: Object, required: true },
 })
+const emit = defineEmits(['add-missing'])
+
+// SCRUM-124: ingredientes da receita que não estão na despensa.
+const missing = computed(() => missingIngredients(props.card))
+const missingNames = computed(() => missing.value.map((i) => i.name).join(', '))
 </script>
 
 <template>
@@ -51,6 +60,18 @@ defineProps({
           <span v-if="ingredient.amount" class="opacity-70">· {{ ingredient.amount }}</span>
         </li>
       </ul>
+
+      <button
+        v-if="missing.length > 0"
+        type="button"
+        data-testid="recipe-add-missing"
+        :data-count="missing.length"
+        :title="missingNames"
+        class="rounded-xl border border-[#42b883] px-3 py-2 text-sm font-semibold text-[#42b883] active:scale-95"
+        @click="emit('add-missing', missing)"
+      >
+        🛒 Adicionar {{ missing.length }} à lista de compras
+      </button>
 
       <details v-if="card.steps.length" class="mt-auto text-sm">
         <summary class="cursor-pointer font-semibold text-[#42b883]" data-testid="recipe-steps-toggle">
