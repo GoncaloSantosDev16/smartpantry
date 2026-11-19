@@ -1,5 +1,9 @@
-import { describe, it, expect, afterEach } from "vitest";
-import { mount } from "@vue/test-utils";
+import "fake-indexeddb/auto";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { mount, flushPromises } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
+import { db } from "@/db";
+import { useShoppingListStore } from "@/stores/shoppingList";
 import RecipeCard from "./RecipeCard.vue";
 
 const CARD = {
@@ -20,48 +24,111 @@ const CARD = {
 };
 
 let wrapper;
+let store;
 
-function montar(card = CARD) {
-  wrapper = mount(RecipeCard, { props: { card } });
+async function montar(card = CARD) {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  store = useShoppingListStore();
+  wrapper = mount(RecipeCard, {
+    props: { card },
+    global: { plugins: [pinia] },
+  });
+  await vi.waitFor(() => expect(store.loaded).toBe(true));
   return wrapper;
 }
 
 const botao = () => wrapper.find('[data-testid="recipe-add-missing"]');
+const naLista = () => wrapper.find('[data-testid="recipe-missing-on-list"]');
 
 describe('SCRUM-125: botão "Adicionar à lista de compras" no cartão', () => {
+  beforeEach(async () => {
+    await db.shoppingItems.clear();
+  });
   afterEach(() => {
     wrapper?.unmount();
     wrapper = null;
   });
 
-  it("mostra quantos ingredientes faltam", () => {
-    montar();
+  it("mostra quantos ingredientes faltam", async () => {
+    await montar();
     expect(botao().exists()).toBe(true);
     expect(botao().text()).toContain("Adicionar 2 à lista de compras");
     expect(botao().attributes("data-count")).toBe("2");
     expect(botao().attributes("title")).toBe("Cebola, Alho");
   });
 
-  it("não aparece quando já tens todos os ingredientes", () => {
-    montar({
+  it("não aparece quando já tens todos os ingredientes", async () => {
+    await montar({
       ...CARD,
       matched: 1,
       missing: 0,
       ingredients: [{ name: "rice", amount: "200 g", inPantry: true }],
     });
     expect(botao().exists()).toBe(false);
+    expect(naLista().exists()).toBe(false);
+  });
+});
+
+describe("SCRUM-126: o botão envia os ingredientes para a Store da Lista de Compras", () => {
+  beforeEach(async () => {
+    await db.shoppingItems.clear();
+  });
+  afterEach(() => {
+    wrapper?.unmount();
+    wrapper = null;
   });
 
-  it("ao carregar envia a lista dos ingredientes em falta", async () => {
-    montar();
+  it("ao carregar adiciona os ingredientes em falta e o contador sobe", async () => {
+    await montar();
     await botao().trigger("click");
-    expect(wrapper.emitted("add-missing")).toEqual([
-      [
-        [
-          { name: "Cebola", original: "onion" },
-          { name: "Alho", original: "garlic" },
-        ],
-      ],
-    ]);
+    await vi.waitFor(() => expect(store.pendingCount).toBe(2));
+    await flushPromises();
+
+    expect(store.pendingItems.map((i) => i.name)).toEqual(["Cebola", "Alho"]);
+    expect(wrapper.emitted("added-to-shopping-list")[0][0]).toHaveLength(2);
+    expect(botao().exists()).toBe(false);
+    expect(naLista().text()).toContain("Na lista de compras");
+  });
+
+  it("só conta os que ainda não estão na lista", async () => {
+    await montar();
+    await store.addItem({ name: "Cebola" });
+    await flushPromises();
+
+    expect(botao().text()).toContain("Adicionar 1 à lista de compras");
+    expect(botao().attributes("title")).toBe("Alho");
+
+    await botao().trigger("click");
+    await vi.waitFor(() => expect(store.pendingCount).toBe(2));
+
+    expect(store.items.find((i) => i.name === "Cebola").quantity).toBe(1);
+  });
+
+  it("já sabe o que está na lista guardada ao abrir a página", async () => {
+    await db.shoppingItems.add({
+      name: "Alho",
+      quantity: 1,
+      unit: "un",
+      checked: false,
+    });
+    await montar();
+    await flushPromises();
+
+    expect(botao().text()).toContain("Adicionar 1 à lista de compras");
+    expect(botao().attributes("title")).toBe("Cebola");
+  });
+
+  it("volta a mostrar o botão se um ingrediente sair da lista", async () => {
+    await montar();
+    await botao().trigger("click");
+    await vi.waitFor(() => expect(store.pendingCount).toBe(2));
+    await flushPromises();
+    expect(naLista().exists()).toBe(true);
+
+    await store.removeItem(store.items.find((i) => i.name === "Alho").id);
+    await flushPromises();
+
+    expect(botao().text()).toContain("Adicionar 1 à lista de compras");
   });
 });

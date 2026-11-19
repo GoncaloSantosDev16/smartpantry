@@ -1,17 +1,44 @@
 <script setup>
 // SCRUM-118 — Cartão de uma receita encontrada no Spoonacular.
 // SCRUM-125 — Botão "Adicionar N à lista de compras" com os ingredientes em falta.
-import { computed } from 'vue'
+// SCRUM-126 — O botão envia-os para a Store da Lista de Compras.
+import { computed, onMounted, ref } from 'vue'
 import { missingIngredients } from '@/services/missingIngredients'
+import { notOnShoppingList, sendToShoppingList } from '@/services/recipeShopping'
+import { useShoppingListStore } from '@/stores/shoppingList'
 
 const props = defineProps({
   card: { type: Object, required: true },
 })
-const emit = defineEmits(['add-missing'])
+const emit = defineEmits(['added-to-shopping-list'])
+
+const shopping = useShoppingListStore()
+const sending = ref(false)
+const sendError = ref('')
+
+// Para saber o que já está na lista, mesmo antes de se abrir o carrinho.
+onMounted(() => shopping.load())
 
 // SCRUM-124: ingredientes da receita que não estão na despensa.
 const missing = computed(() => missingIngredients(props.card))
-const missingNames = computed(() => missing.value.map((i) => i.name).join(', '))
+// Os que ainda não estão na lista por comprar (são esses que o botão envia).
+const toAdd = computed(() => notOnShoppingList(missing.value, shopping.pendingItems))
+const toAddNames = computed(() => toAdd.value.map((i) => i.name).join(', '))
+
+async function addMissing() {
+  if (sending.value || toAdd.value.length === 0) return
+  sending.value = true
+  sendError.value = ''
+  try {
+    const added = await sendToShoppingList(shopping, toAdd.value)
+    emit('added-to-shopping-list', added)
+  } catch (err) {
+    console.error('Erro ao adicionar à lista de compras:', err)
+    sendError.value = 'Não foi possível adicionar à lista de compras.'
+  } finally {
+    sending.value = false
+  }
+}
 </script>
 
 <template>
@@ -61,17 +88,30 @@ const missingNames = computed(() => missing.value.map((i) => i.name).join(', '))
         </li>
       </ul>
 
-      <button
-        v-if="missing.length > 0"
-        type="button"
-        data-testid="recipe-add-missing"
-        :data-count="missing.length"
-        :title="missingNames"
-        class="rounded-xl border border-[#42b883] px-3 py-2 text-sm font-semibold text-[#42b883] active:scale-95"
-        @click="emit('add-missing', missing)"
-      >
-        🛒 Adicionar {{ missing.length }} à lista de compras
-      </button>
+            <template v-if="missing.length > 0">
+        <button
+          v-if="toAdd.length > 0"
+          type="button"
+          data-testid="recipe-add-missing"
+          :data-count="toAdd.length"
+          :title="toAddNames"
+          :disabled="sending"
+          class="rounded-xl border border-[#42b883] px-3 py-2 text-sm font-semibold text-[#42b883] active:scale-95 disabled:opacity-50"
+          @click="addMissing"
+        >
+          🛒 Adicionar {{ toAdd.length }} à lista de compras
+        </button>
+        <p
+          v-else
+          data-testid="recipe-missing-on-list"
+          class="m-0 rounded-xl bg-green-50 px-3 py-2 text-center text-sm font-semibold text-green-700"
+        >
+          ✓ Na lista de compras
+        </p>
+        <p v-if="sendError" data-testid="recipe-add-missing-error" class="m-0 text-sm text-red-600" role="alert">
+          {{ sendError }}
+        </p>
+      </template>
 
       <details v-if="card.steps.length" class="mt-auto text-sm">
         <summary class="cursor-pointer font-semibold text-[#42b883]" data-testid="recipe-steps-toggle">
