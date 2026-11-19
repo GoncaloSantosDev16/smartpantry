@@ -3,22 +3,34 @@
 //   SCRUM-116: lista de ingredientes da despensa -> buildPantryIngredientList
 //   SCRUM-117: pesquisa no Spoonacular            -> discoverRecipes
 //   SCRUM-118: resultados em grelha               -> toRecipeCards + RecipeCard
+//   SCRUM-128: o "+" de um ingrediente em falta põe-no na despensa -> addToPantry
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { db } from "@/db";
 import { useProfilesStore } from "@/stores/profiles";
+import { usePantryStore } from "@/stores/pantry";
 import { useRecipeGenerator } from "@/composables/useRecipeGenerator";
 import { discoverRecipes } from "@/services/recipeDiscovery";
 import { buildPantryIngredientList } from "@/services/pantryIngredients";
 import { toRecipeCards } from "@/services/recipeCards";
+import { toPantryItem } from "@/services/recipePantry";
 import GenAIStatus from "@/components/GenAIStatus.vue";
 import RecipeCard from "@/components/RecipeCard.vue";
 import PersonalFiltersToggle from "@/components/PersonalFiltersToggle.vue";
+import ShoppingListButton from "@/components/ShoppingListButton.vue";
+import ShoppingListDrawer from "@/components/ShoppingListDrawer.vue";
 
 const profiles = useProfilesStore();
+const pantryStore = usePantryStore();
 
 const pantry = ref([]);
 const pantryLoaded = ref(false);
 const pantryError = ref(false);
+
+// SCRUM-128: ingredientes (nomes do Spoonacular) postos na despensa depois da pesquisa.
+const addedToPantry = ref([]);
+const addingToPantry = new Set();
+const pantryAddError = ref("");
+const isShoppingListOpen = ref(false);
 
 // O composable só gere loading/erro/cancelamento; a resposta fica em `result`.
 const {
@@ -36,7 +48,10 @@ const {
 
 const cards = computed(() =>
   result.value
-    ? toRecipeCards(result.value.recipes, result.value.pantryNames)
+    ? toRecipeCards(result.value.recipes, [
+        ...result.value.pantryNames,
+        ...addedToPantry.value,
+      ])
     : [],
 );
 const noResults = computed(
@@ -44,9 +59,13 @@ const noResults = computed(
 );
 const canSearch = computed(() => pantry.value.length > 0 && !loading.value);
 
+async function readPantry() {
+  pantry.value = buildPantryIngredientList(await db.pantryItems.toArray());
+}
+
 onMounted(async () => {
   try {
-    pantry.value = buildPantryIngredientList(await db.pantryItems.toArray());
+    await readPantry();
   } catch (err) {
     pantryError.value = true;
     console.error("Erro ao carregar a despensa:", err);
@@ -56,6 +75,25 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(cancel);
+
+// SCRUM-128 — Guarda o ingrediente na despensa (pela store, para o dashboard ficar
+// atualizado) e marca-o como "tens" em todos os cartões, sem nova pesquisa.
+async function addToPantry(ingredient) {
+  const item = toPantryItem(ingredient?.name);
+  if (!item || addingToPantry.has(ingredient.name)) return;
+  addingToPantry.add(ingredient.name);
+  pantryAddError.value = "";
+  try {
+    await pantryStore.addItem(item);
+    addedToPantry.value.push(ingredient.name);
+    await readPantry();
+  } catch (err) {
+    console.error("Erro ao adicionar à despensa:", err);
+    pantryAddError.value = `Não foi possível adicionar ${item.name} à despensa.`;
+  } finally {
+    addingToPantry.delete(ingredient.name);
+  }
+}
 
 function search() {
   if (!canSearch.value) return;
@@ -89,7 +127,13 @@ function search() {
           Perfil: {{ profiles.activeProfile.name }}
         </p>
       </div>
+
+      <div class="ml-auto">
+        <ShoppingListButton @open="isShoppingListOpen = true" />
+      </div>
     </header>
+
+    <ShoppingListDrawer v-model:open="isShoppingListOpen" />
 
     <PersonalFiltersToggle />
     <section class="card mb-6">
@@ -151,12 +195,26 @@ function search() {
       Não foram encontradas receitas com estes ingredientes.
     </p>
 
+    <p
+      v-if="pantryAddError"
+      data-testid="recipes-pantry-add-error"
+      class="mb-4 text-red-600"
+      role="alert"
+    >
+      {{ pantryAddError }}
+    </p>
+
     <section
       v-if="!loading && cards.length > 0"
       data-testid="recipes-grid"
       class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
     >
-      <RecipeCard v-for="card in cards" :key="card.id" :card="card" />
+      <RecipeCard
+        v-for="card in cards"
+        :key="card.id"
+        :card="card"
+        @add-to-pantry="addToPantry"
+      />
     </section>
   </div>
 </template>
