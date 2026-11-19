@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description></description>
+   <name>RunMissingIngredientsFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>738bd2ac-fb50-4def-8bdd-7d7205ddb9ad</testCaseGuid>
+</TestCaseEntity>

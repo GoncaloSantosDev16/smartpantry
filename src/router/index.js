@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import { useProfilesStore } from "@/stores/profiles";
+import { useRecipesStore } from "@/stores/recipes";
+import { DEMO_RECIPE } from "@/services/recipeModel";
 import { decidirArranque } from "@/services/startup";
 
 const router = createRouter({
@@ -22,8 +24,38 @@ const router = createRouter({
       name: "scanner",
       component: () => import("../components/BarcodeScanner.vue"),
     },
+    // US-16: receitas guardadas (a rota "recipes" é das sugestões, US-09)
+    {
+      path: "/receitas/guardadas",
+      name: "saved-recipes",
+      component: () => import("../views/SavedRecipesView.vue"),
+    },
+    // US-13: detalhes e gravação de receitas
+    {
+      path: "/receitas/preview",
+      name: "recipe-preview",
+      component: () => import("../views/RecipeDetailView.vue"),
+    },
+    {
+      path: "/receitas/:id(\\d+)",
+      name: "recipe-detail",
+      component: () => import("../views/RecipeDetailView.vue"),
+    },
   ],
 });
+
+// Só em desenvolvimento: abre uma receita "gerada pela IA" de exemplo, para testar
+// o ecrã de detalhes e a gravação (Katalon) sem depender do ecrã do Sous-Chef.
+if (import.meta.env.DEV) {
+  router.addRoute({
+    path: "/receitas/demo",
+    name: "recipe-demo",
+    redirect: () => {
+      useRecipesStore().openPreview(DEMO_RECIPE);
+      return { name: "recipe-preview" };
+    },
+  });
+}
 
 router.beforeEach(async (to) => {
   const profiles = useProfilesStore();

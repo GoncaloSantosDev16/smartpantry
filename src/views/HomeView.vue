@@ -11,6 +11,8 @@ import { usePantryStore } from '@/stores/pantry'
 import { isExpiringSoon, isExpired, expiryLabel } from '@/services/expiration'
 import ExpiringAlert from '@/components/ExpiringAlert.vue'
 import ProfileSwitcher from '@/components/ProfileSwitcher.vue'
+import NewCategoryModal from '@/components/NewCategoryModal.vue'
+import { useCategoriesStore } from '@/stores/categories'
 
 // --- ESTADOS DA DESPENSA ---
 const pantry = usePantryStore();
@@ -24,7 +26,21 @@ const newItemUnit = ref('un')
 const newItemCategory = ref('Other')
 const newItemExpiration = ref('') // US-06: AAAA-MM-DD (input type="date")
 const formErrors = ref({})
-const DEFAULT_CATEGORIES = ['Laticínios', 'Bebidas', 'Cereais', 'Snacks', 'Carne', 'Fruta', 'Vegetais', 'Outro']
+
+// US-05: categorias personalizadas (Pinia + Dexie)
+const categoriesStore = useCategoriesStore()
+const isCategoryModalOpen = ref(false)
+const allCategories = computed(() => categoriesStore.all)
+
+async function onCategoryCreated(name) {
+  try {
+    const saved = await categoriesStore.add(name)
+    newItemCategory.value = saved
+  } catch (error) {
+    console.error('Erro ao guardar a categoria:', error)
+  }
+}
+
 
 // NOVO: Estado para controlar a edição (US-04)
 const editingId = ref(null);
@@ -36,7 +52,8 @@ const isLoading = ref(false)
 
 // CARREGAR OS DADOS (US-04 - Listar)
 onMounted(async () => {
-  await pantry.load(); // a store trata os erros
+  await pantry.load();
+  await categoriesStore.load();
 });
 
 // --- LÓGICA DO FORMULÁRIO (US-03 Adicionar & US-04 Editar) ---
@@ -281,9 +298,16 @@ async function testRecipes() {
                 placeholder="Seleciona ou escreve uma..."
                 :class="{ 'has-error': formErrors.category }"
               />
-
+                            <button
+                type="button"
+                data-testid="btn-new-category"
+                class="self-start text-xs font-semibold text-[#42b883] hover:underline"
+                @click="isCategoryModalOpen = true"
+              >
+                + Nova categoria
+              </button>
               <datalist id="category-options">
-                <option v-for="cat in DEFAULT_CATEGORIES" :key="cat" :value="cat"></option>
+                <option v-for="cat in allCategories" :key="cat" :value="cat"></option>
               </datalist>
               <span
                 v-if="formErrors.category"
@@ -340,6 +364,11 @@ async function testRecipes() {
             </div>
           </div>
         </form>
+        <NewCategoryModal
+          v-model:open="isCategoryModalOpen"
+          :existing="allCategories"
+          @created="onCategoryCreated"
+        />
       </section>
 
       <!-- ZONA 2: LISTA DA DESPENSA -->
