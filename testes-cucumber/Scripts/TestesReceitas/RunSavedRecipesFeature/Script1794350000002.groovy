@@ -8,6 +8,6 @@ import com.kms.katalon.core.model.FailureHandling
 CucumberKW.GLUE = ['smartpantry.steps']
 
 CucumberKW.runFeatureFile(
-    'Include/features/recipes-offline.feature',
+    'Include/features/OfflineRecipes.feature',
     [:],
     FailureHandling.CONTINUE_ON_FAILURE)

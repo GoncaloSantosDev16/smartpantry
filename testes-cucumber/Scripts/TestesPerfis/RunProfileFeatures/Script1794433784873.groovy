@@ -7,6 +7,6 @@ import com.kms.katalon.core.model.FailureHandling
 CucumberKW.GLUE = ['smartpantry.steps']
 
 CucumberKW.runFeatureFile(
-    'Include/features/switch-profile.feature',
+    'Include/features/SwitchProfile.feature',
     [:],
     FailureHandling.CONTINUE_ON_FAILURE)

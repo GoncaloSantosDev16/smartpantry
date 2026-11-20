@@ -7,6 +7,6 @@ import com.kms.katalon.core.model.FailureHandling
 CucumberKW.GLUE = ['smartpantry.steps']
 
 CucumberKW.runFeatureFile(
-    'Include/features/missing-ingredients.feature',
+    'Include/features/MissingIngredients.feature',
     [:],
     FailureHandling.CONTINUE_ON_FAILURE)

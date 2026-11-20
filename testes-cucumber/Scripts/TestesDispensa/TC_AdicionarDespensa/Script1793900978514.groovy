@@ -19,5 +19,5 @@ import org.openqa.selenium.Keys as Keys
 import com.kms.katalon.core.cucumber.keyword.CucumberBuiltinKeywords as CucumberBuiltInKeywords
 
 // Executa diretamente o ficheiro Gherkin da despensa
-CucumberBuiltInKeywords.runFeatureFile('Include/features/GestaoCompletaDaDespensa.feature')
+CucumberBuiltInKeywords.runFeatureFile('Include/features/PantryManagement.feature')
 
