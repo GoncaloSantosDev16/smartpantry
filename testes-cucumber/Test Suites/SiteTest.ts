@@ -15,7 +15,7 @@
       <guid>5ff19e53-fb00-4414-bd30-256f7c6000c0</guid>
       <isReuseDriver>false</isReuseDriver>
       <isRun>true</isRun>
-      <testCaseId>Test Cases/TestesDispensa/TC_AdicionarDespensa</testCaseId>
+      <testCaseId>Test Cases/TestesDispensa/RunPantryManagementFeatures</testCaseId>
       <usingDataBindingAtTestSuiteLevel>false</usingDataBindingAtTestSuiteLevel>
    </testCaseLink>
    <testCaseLink>

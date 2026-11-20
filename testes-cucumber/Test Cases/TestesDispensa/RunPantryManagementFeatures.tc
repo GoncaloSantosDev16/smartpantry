@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <TestCaseEntity>
-   <description></description>
-   <name>TC_AdicionarDespensa</name>
+   <description>US-03 / US-04 — BDD: pantry management (add, validate, edit, cancel, remove)</description>
+   <name>RunPantryManagementFeatures</name>
    <tag></tag>
    <comment></comment>
    <recordOption>OTHER</recordOption>
