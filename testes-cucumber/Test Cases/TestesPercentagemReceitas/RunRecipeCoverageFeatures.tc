@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>SCRUM-38 — BDD: % de ingredientes da receita na despensa (US-10)</description>
+   <name>RunRecipeCoverageFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>a41f7c2d-9e35-4b18-8c60-1d38e5b7f210</testCaseGuid>
+</TestCaseEntity>

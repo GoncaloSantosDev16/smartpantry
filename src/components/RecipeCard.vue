@@ -3,6 +3,7 @@
 // SCRUM-125 — Botão "Adicionar N à lista de compras" com os ingredientes em falta.
 // SCRUM-126 — O botão envia-os para a Store da Lista de Compras.
 // SCRUM-128 — O "+" de cada ingrediente em falta pede para o pôr na despensa.
+// SCRUM-115 — Indicador da % de ingredientes que já existem na despensa.
 import { computed, onMounted, ref } from "vue";
 import { missingIngredients } from "@/services/missingIngredients";
 import {
@@ -45,6 +46,13 @@ async function addMissing() {
     sending.value = false;
   }
 }
+
+// SCRUM-115 — Verde: tens tudo; âmbar: metade ou mais; cinzento: menos de metade.
+const coverageTone = computed(() => {
+  if (props.card.percent >= 100) return { text: "text-green-700", bar: "bg-green-500" };
+  if (props.card.percent >= 50) return { text: "text-amber-700", bar: "bg-amber-400" };
+  return { text: "text-gray-600", bar: "bg-gray-400" };
+});
 </script>
 
 <template>
@@ -72,20 +80,26 @@ async function addMissing() {
         {{ card.title }}
       </h3>
 
-      <div class="flex flex-wrap gap-2 text-xs font-medium text-gray-600">
-        <span
-          data-testid="recipe-match"
-          class="rounded-full px-2 py-1"
-          :class="
-            card.missing === 0
-              ? 'bg-green-100 text-green-700'
-              : 'bg-amber-100 text-amber-700'
-          "
+      <!-- SCRUM-115: indicador de progresso -->
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between text-sm">
+          <span data-testid="recipe-coverage-text" class="font-semibold" :class="coverageTone.text">{{ card.coverageText }}</span>
+          <span class="text-xs text-gray-500">{{ card.matched }}/{{ card.ingredients.length }}</span>
+        </div>
+        <div
+          data-testid="recipe-coverage-bar"
+          role="progressbar"
+          :aria-valuenow="card.percent"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          :aria-label="card.coverageText"
+          class="h-2 w-full overflow-hidden rounded-full bg-gray-100"
         >
-          {{ card.percent }}% na despensa · {{ card.matched }}/{{
-            card.ingredients.length
-          }}
-        </span>
+          <div class="h-full rounded-full transition-[width] duration-500" :class="coverageTone.bar" :style="{ width: `${card.percent}%` }"></div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-2 text-xs font-medium text-gray-600">
         <span
           v-if="card.totalMinutes !== null"
           class="rounded-full bg-slate-100 px-2 py-1"
