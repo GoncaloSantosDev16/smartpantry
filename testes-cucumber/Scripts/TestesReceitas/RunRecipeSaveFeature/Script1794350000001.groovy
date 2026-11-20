@@ -8,6 +8,6 @@ import com.kms.katalon.core.model.FailureHandling
 CucumberKW.GLUE = ['smartpantry.steps']
 
 CucumberKW.runFeatureFile(
-    'Include/features/recipes-guardar.feature',
+    'Include/features/SaveRecipes.feature',
     [:],
     FailureHandling.CONTINUE_ON_FAILURE)

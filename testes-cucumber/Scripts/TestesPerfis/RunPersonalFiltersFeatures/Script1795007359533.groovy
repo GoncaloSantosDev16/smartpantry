@@ -7,6 +7,6 @@ import com.kms.katalon.core.model.FailureHandling
 CucumberKW.GLUE = ['smartpantry.steps']
 
 CucumberKW.runFeatureFile(
-    'Include/features/personal-filters.feature',
+    'Include/features/PersonalFilters.feature',
     [:],
     FailureHandling.CONTINUE_ON_FAILURE)

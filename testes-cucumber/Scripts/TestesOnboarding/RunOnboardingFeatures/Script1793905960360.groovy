@@ -8,6 +8,6 @@ import com.kms.katalon.core.model.FailureHandling
 CucumberKW.GLUE = ['smartpantry.steps']
 
 CucumberKW.runFeatureFile(
-    'Include/features/onboarding.feature',
+    'Include/features/Onboarding.feature',
     [:],
     FailureHandling.CONTINUE_ON_FAILURE)
