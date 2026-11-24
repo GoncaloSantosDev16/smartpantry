@@ -64,6 +64,24 @@ export const usePantryStore = defineStore("pantry", {
       this.items = this.items.filter((i) => i.id !== id);
     },
 
+    // US-21 — Aplica o resumo de ingredientes consumidos (planConsumption) numa só
+    // transação: ou fica tudo descontado, ou nada.
+    async consumeItems(operations = []) {
+      if (operations.length === 0) return;
+      await db.transaction("rw", db.pantryItems, async () => {
+        for (const op of operations) {
+          if (op.remove) await db.pantryItems.delete(op.id);
+          else await db.pantryItems.update(op.id, { quantity: op.quantity });
+        }
+      });
+      const removed = new Set(operations.filter((op) => op.remove).map((op) => op.id));
+      const updated = new Map(operations.filter((op) => !op.remove).map((op) => [op.id, op.quantity]));
+      this.items = this.items
+        .filter((i) => !removed.has(i.id))
+        .map((i) => (updated.has(i.id) ? { ...i, quantity: updated.get(i.id) } : i));
+      this.now = Date.now();
+    },
+
     refreshNow() {
       this.now = Date.now();
     },

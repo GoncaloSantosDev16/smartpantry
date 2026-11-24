@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useRecipesStore } from '@/stores/recipes'
 import { formatDuration, formatQuantity, formatTimer, totalMinutes } from '@/services/recipeModel'
+import { mealSummaryRoute } from '@/services/mealSummary'
 
 const route = useRoute()
 const router = useRouter()
@@ -58,6 +59,11 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+// SCRUM-130: fim da receita -> resumo dos ingredientes consumidos (o Cook Mode usa a mesma rota)
+function finishRecipe() {
+  router.push(mealSummaryRoute(recipe.value))
 }
 
 function goBack() {
@@ -157,6 +163,12 @@ function goBack() {
           </li>
         </ol>
       </section>
+
+      <footer class="border-t border-slate-100 pt-4">
+        <button type="button" class="btn-primary w-full" data-testid="finish-recipe" @click="finishRecipe">
+          🍽️ Concluir receita
+        </button>
+      </footer>
     </article>
   </div>
 </template>

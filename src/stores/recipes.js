@@ -65,6 +65,17 @@ export const useRecipesStore = defineStore('recipes', {
       this.preview = null
     },
 
+    /** US-21 — Conta mais uma vez que a receita foi cozinhada (só receitas guardadas). */
+    async markCooked(id) {
+      if (id === undefined || id === null) return
+      const receita = await this.getById(id)
+      if (!receita) return
+      const timesCooked = (receita.timesCooked ?? 0) + 1
+      await db.recipes.update(id, { timesCooked })
+      const emMemoria = this.recipes.find((r) => r.id === id)
+      if (emMemoria) emMemoria.timesCooked = timesCooked
+    },
+
     /**
      * Guarda a receita no IndexedDB e devolve o registo (com id).
      * Receitas do Spoonacular não se duplicam (mesma origem + externalId).
