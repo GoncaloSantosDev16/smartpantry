@@ -36,6 +36,17 @@ const router = createRouter({
       name: "recipe-preview",
       component: () => import("../views/RecipeDetailView.vue"),
     },
+    // US-21: resumo de ingredientes consumidos, no fim da receita
+    {
+      path: "/receitas/preview/resumo",
+      name: "meal-summary-preview",
+      component: () => import("../views/MealSummaryView.vue"),
+    },
+    {
+      path: "/receitas/:id(\\d+)/resumo",
+      name: "meal-summary",
+      component: () => import("../views/MealSummaryView.vue"),
+    },
     {
       path: "/receitas/:id(\\d+)",
       name: "recipe-detail",

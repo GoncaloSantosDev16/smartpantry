@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>SCRUM-49 — BDD: resumo de ingredientes consumidos (US-21)</description>
+   <name>RunConsumedIngredientsSummaryFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>c76240b2-cbce-42f1-b4cb-5773af2a4fd0</testCaseGuid>
+</TestCaseEntity>

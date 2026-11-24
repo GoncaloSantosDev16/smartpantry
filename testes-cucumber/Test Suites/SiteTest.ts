@@ -102,4 +102,11 @@
       <testCaseId>Test Cases/TestesReceitas/RunSavedRecipesFeature</testCaseId>
       <usingDataBindingAtTestSuiteLevel>false</usingDataBindingAtTestSuiteLevel>
    </testCaseLink>
+   <testCaseLink>
+      <guid>055143cc-c9dd-4a59-832b-03d5ce105e1c</guid>
+      <isReuseDriver>false</isReuseDriver>
+      <isRun>true</isRun>
+      <testCaseId>Test Cases/TestesResumoRefeicao/RunConsumedIngredientsSummaryFeatures</testCaseId>
+      <usingDataBindingAtTestSuiteLevel>false</usingDataBindingAtTestSuiteLevel>
+   </testCaseLink>
 </TestSuiteEntity>

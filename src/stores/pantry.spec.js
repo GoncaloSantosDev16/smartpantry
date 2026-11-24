@@ -74,3 +74,22 @@ describe("pantry store", () => {
     });
   });
 });
+
+describe("pantry store — consumeItems (US-21)", () => {
+  beforeEach(async () => {
+    setActivePinia(createPinia());
+    await db.pantryItems.clear();
+  });
+
+  it("atualiza quantidades e remove os itens que acabam", async () => {
+    const store = usePantryStore();
+    const arroz = await store.addItem({ name: "Arroz", quantity: 1, unit: "kg" });
+    const ovos = await store.addItem({ name: "Ovos", quantity: 2, unit: "un" });
+
+    await store.consumeItems([{ id: arroz.id, quantity: 0.8 }, { id: ovos.id, remove: true }]);
+
+    expect(store.items).toEqual([{ ...arroz, quantity: 0.8 }]);
+    expect((await db.pantryItems.get(arroz.id)).quantity).toBe(0.8);
+    expect(await db.pantryItems.get(ovos.id)).toBeUndefined();
+  });
+});
