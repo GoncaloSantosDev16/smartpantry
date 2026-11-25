@@ -25,6 +25,12 @@ const router = createRouter({
       component: () => import("../components/BarcodeScanner.vue"),
     },
     // US-16: receitas guardadas (a rota "recipes" é das sugestões, US-09)
+    // US-17: Sous-Chef (gerar receita a partir das sobras)
+    {
+      path: "/sous-chef",
+      name: "sous-chef",
+      component: () => import("../views/SousChefView.vue"),
+    },
     {
       path: "/receitas/guardadas",
       name: "saved-recipes",
