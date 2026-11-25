@@ -92,9 +92,69 @@ export const useProfilesStore = defineStore("profiles", {
       return profile;
     },
 
+    // SCRUM-140 — Atualiza um perfil existente no Dexie e na store.
+    async updateProfile(id, data) {
+      const index = this.profiles.findIndex((p) => p.id === id);
+      if (index === -1) return null;
+
+      const atual = this.profiles[index];
+      const atualizado = {
+        ...atual,
+        name: data.name !== undefined ? data.name.trim() : atual.name,
+        servings:
+          data.servings !== undefined
+            ? Number(data.servings) || 1
+            : atual.servings,
+        diets:
+          data.diets !== undefined
+            ? [...data.diets]
+            : [...(atual.diets ?? [])],
+        allergies:
+          data.allergies !== undefined
+            ? [...data.allergies]
+            : [...(atual.allergies ?? [])],
+        excludedIngredients:
+          data.excludedIngredients !== undefined
+            ? [...data.excludedIngredients]
+            : [...(atual.excludedIngredients ?? [])],
+      };
+
+      await db.profiles.put(atualizado);
+      this.profiles[index] = atualizado;
+      return atualizado;
+    },
+
+    // SCRUM-140 — Elimina um perfil, impedindo apagar o último e promovendo
+    // outro a default caso o eliminado fosse o predefinido.
+    async deleteProfile(id) {
+      if (this.profiles.length <= 1) return false;
+
+      const alvo = this.profiles.find((p) => p.id === id);
+      if (!alvo) return false;
+
+      await db.transaction("rw", db.profiles, async () => {
+        await db.profiles.delete(id);
+        const restantes = this.profiles.filter((p) => p.id !== id);
+
+        if (alvo.isDefault && restantes.length > 0) {
+          await db.profiles.update(restantes[0].id, { isDefault: true });
+          restantes[0] = { ...restantes[0], isDefault: true };
+        }
+
+        this.profiles = restantes;
+      });
+
+      if (this.activeProfileId === id) {
+        this.activeProfileId = null;
+        limparPerfilAtivo();
+      }
+
+      return true;
+    },
+
     /**
-     * SCRUM-104 — Torna ativo o perfil com o id indicado.
-     * Devolve false, sem alterar nada, se o perfil não existir.
+- SCRUM-104 — Torna ativo o perfil com o id indicado.
+- Devolve false, sem alterar nada, se o perfil não existir.
      */
     setActiveProfile(id) {
       const perfil = this.profiles.find((p) => p.id === id);
@@ -114,8 +174,8 @@ export const useProfilesStore = defineStore("profiles", {
     },
 
     /**
-     * Recupera a escolha guardada. Se o perfil entretanto deixou de existir,
-     * a escolha é esquecida e o perfil ativo volta a ser o default.
+- Recupera a escolha guardada. Se o perfil entretanto deixou de existir,
+- a escolha é esquecida e o perfil ativo volta a ser o default.
      */
     restaurarPerfilAtivo() {
       const guardado = lerPerfilAtivo();
