@@ -122,6 +122,19 @@ async function codeFromHttpError(res) {
   return { code: GENAI_ERRORS.BAD_REQUEST, detail }
 }
 
+// US-17 — Resposta simulada, SÓ em desenvolvimento (npm run dev); no build de produção
+// este código é removido. Os testes Katalon definem antes do pedido:
+//   window.__SMARTPANTRY_GENAI_MOCK__ = { data: { ...receita } }  ou  { error: 'timeout' }
+// e podem ler o pedido feito em window.__SMARTPANTRY_GENAI_MOCK__.lastRequest.prompt.
+function devMock(prompt, systemInstruction) {
+  if (!import.meta.env.DEV) return null
+  const mock = globalThis.__SMARTPANTRY_GENAI_MOCK__
+  if (!mock || typeof mock !== 'object') return null
+  mock.lastRequest = { prompt, systemInstruction: systemInstruction ?? '' }
+  if (mock.error) return fail(mock.error)
+  return { status: 'ok', text: typeof mock.data === 'string' ? mock.data : JSON.stringify(mock.data ?? {}) }
+}
+
 // --- API pública ----------------------------------------------------------------
 
 /**
@@ -139,6 +152,9 @@ export async function generateText(prompt, options = {}) {
     signal,
     fetchImpl = globalThis.fetch,
   } = options
+
+  const mocked = devMock(prompt, systemInstruction)
+  if (mocked) return mocked
 
   const config = getConfig()
   if (!config.apiKey) return fail(GENAI_ERRORS.MISSING_KEY)

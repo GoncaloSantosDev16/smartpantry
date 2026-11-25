@@ -202,7 +202,7 @@ async function testRecipes() {
 <template>
   <div class="max-w-4xl mx-auto py-8 px-4 text-gray-800 font-sans" data-testid="home">
     <header class="text-center mb-10">
-      <div class="flex justify-end items-center gap-3 mb-4">
+      <div class="flex flex-wrap justify-end items-center gap-3 mb-4">
         <ProfileSwitcher />
         <RouterLink
           to="/receitas"
@@ -210,6 +210,20 @@ async function testRecipes() {
           class="flex h-11 items-center gap-1 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold shadow-sm active:scale-95"
         >
           🍳 Receitas
+        </RouterLink>
+        <RouterLink
+          to="/sous-chef"
+          data-testid="sous-chef-link"
+          class="flex h-11 items-center gap-1 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold shadow-sm active:scale-95"
+        >
+          🧑‍🍳 Sous-Chef
+        </RouterLink>
+        <RouterLink
+          to="/receitas/guardadas"
+          data-testid="saved-recipes-link"
+          class="flex h-11 items-center gap-1 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold shadow-sm active:scale-95"
+        >
+          📖 Guardadas
         </RouterLink>
         <ShoppingListButton @open="isShoppingListOpen = true" />
       </div>
