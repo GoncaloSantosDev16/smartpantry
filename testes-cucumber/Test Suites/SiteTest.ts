@@ -109,4 +109,11 @@
       <testCaseId>Test Cases/TestesResumoRefeicao/RunConsumedIngredientsSummaryFeatures</testCaseId>
       <usingDataBindingAtTestSuiteLevel>false</usingDataBindingAtTestSuiteLevel>
    </testCaseLink>
+   <testCaseLink>
+      <guid>d2af4776-cc32-4a35-8897-8c66c4110e84</guid>
+      <isReuseDriver>false</isReuseDriver>
+      <isRun>true</isRun>
+      <testCaseId>Test Cases/TestesReceitas/RunCookingCarouselFeatures</testCaseId>
+      <usingDataBindingAtTestSuiteLevel>false</usingDataBindingAtTestSuiteLevel>
+   </testCaseLink>
 </TestSuiteEntity>
