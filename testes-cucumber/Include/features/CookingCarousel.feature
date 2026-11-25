@@ -68,20 +68,31 @@ Feature: Step-by-step cooking carousel with the ingredients of each step
     Then I see cooking step 2 of 4
     When I swipe to the previous cooking step
     Then I see cooking step 1 of 4
+  # ----------------------------------------------------------------------
+  # SCRUM-145 — Sair do carrossel
+  # ----------------------------------------------------------------------
+
+  @SCRUM-143 @SCRUM-145 @close
+  Scenario: Leave the carousel without finishing the recipe
+    When I start cooking
+    And I go to the next cooking step
+    And I leave the cooking carousel
+    Then the cooking carousel is closed
+    And I see the recipe details
 
   # ----------------------------------------------------------------------
-  # SCRUM-145 — Último passo
+  # SCRUM-145 — Último passo: "Concluir" abre o resumo da US-21
+  # (mesmo botão finish-recipe e mesmo passo "I finish cooking the recipe")
   # ----------------------------------------------------------------------
 
   @SCRUM-143 @SCRUM-145 @finish
-  Scenario: The last step finishes cooking and goes back to the recipe
+  Scenario: The last step finishes the recipe and opens the summary of the ingredients used
     When I start cooking
     And I go to the next cooking step
     And I go to the next cooking step
     And I go to the next cooking step
     Then I see cooking step 4 of 4
     And the cooking step ingredients are "Frango cozido"
-    And the next cooking step button says "Concluir"
-    When I finish cooking
-    Then the cooking carousel is closed
-    And I see the recipe details
+    And the last cooking step offers to finish the recipe
+    When I finish cooking the recipe
+    Then I see the summary of the ingredients used
