@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>SCRUM-43 — US-15: contador de vezes que a receita foi cozinhada (BDD)</description>
+   <name>RunTimesCookedFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>ae5aeb60-014a-4dd7-88aa-1e47b2ef70d9</testCaseGuid>
+</TestCaseEntity>

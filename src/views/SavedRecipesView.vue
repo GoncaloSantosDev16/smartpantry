@@ -1,9 +1,11 @@
 <script setup>
 // US-16 / SCRUM-100: ecrã "Receitas Guardadas". Lê sempre diretamente do IndexedDB
 // (Dexie), por isso funciona sem ligação à internet.
+// US-15 (SCRUM-43): cada cartão mostra quantas vezes a receita já foi cozinhada.
 import { onMounted, ref } from 'vue'
 import { useRecipesStore } from '@/stores/recipes'
 import { formatDuration, totalMinutes } from '@/services/recipeModel'
+import { formatTimesCooked, timesCookedCount } from '@/services/timesCooked'
 
 const store = useRecipesStore()
 const loading = ref(true)
@@ -54,6 +56,14 @@ function summary(recipe) {
         >
           <strong class="text-lg text-gray-800" data-testid="recipe-card-title">{{ recipe.title }}</strong>
           <span class="text-sm text-gray-500" data-testid="recipe-card-summary">{{ summary(recipe) }}</span>
+          <span
+            class="text-sm font-semibold"
+            :class="timesCookedCount(recipe) > 0 ? 'text-amber-700' : 'text-gray-400'"
+            data-testid="recipe-card-times-cooked"
+            :data-count="timesCookedCount(recipe)"
+          >
+            🍳 {{ formatTimesCooked(timesCookedCount(recipe)) }}
+          </span>
         </RouterLink>
       </li>
     </ul>

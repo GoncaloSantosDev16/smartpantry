@@ -117,6 +117,10 @@
       <usingDataBindingAtTestSuiteLevel>false</usingDataBindingAtTestSuiteLevel>
    </testCaseLink>
    <testCaseLink>
+      <guid>e19c01d0-c3a8-423c-961a-ae302e0cd720</guid>
+      <isReuseDriver>false</isReuseDriver>
+      <isRun>true</isRun>
+      <testCaseId>Test Cases/TestesReceitas/RunTimesCookedFeatures</testCaseId>
       <guid>f0a94678-6fb3-4d89-b650-cf9cdd007a29</guid>
       <isReuseDriver>false</isReuseDriver>
       <isRun>true</isRun>
