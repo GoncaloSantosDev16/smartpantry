@@ -1,67 +1,60 @@
 package smartpantry.steps
-import static com.kms.katalon.core.checkpoint.CheckpointFactory.findCheckpoint
-import static com.kms.katalon.core.testcase.TestCaseFactory.findTestCase
-import static com.kms.katalon.core.testdata.TestDataFactory.findTestData
-import static com.kms.katalon.core.testobject.ObjectRepository.findTestObject
 
-import com.kms.katalon.core.annotation.Keyword
-import com.kms.katalon.core.checkpoint.Checkpoint
-import com.kms.katalon.core.checkpoint.CheckpointFactory
-import com.kms.katalon.core.mobile.keyword.MobileBuiltInKeywords as Mobile
 import com.kms.katalon.core.model.FailureHandling
-import com.kms.katalon.core.testcase.TestCase
-import com.kms.katalon.core.testcase.TestCaseFactory
-import com.kms.katalon.core.testdata.TestData
-import com.kms.katalon.core.testdata.TestDataFactory
-import com.kms.katalon.core.testobject.ObjectRepository
-import com.kms.katalon.core.testobject.TestObject
-import com.kms.katalon.core.webservice.keyword.WSBuiltInKeywords as WS
-import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
-
-import internal.GlobalVariable
-
-import org.openqa.selenium.WebElement
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.By
-
-import com.kms.katalon.core.mobile.keyword.internal.MobileDriverFactory
-import com.kms.katalon.core.webui.driver.DriverFactory
-
-import com.kms.katalon.core.testobject.RequestObject
-import com.kms.katalon.core.testobject.ResponseObject
 import com.kms.katalon.core.testobject.ConditionType
-import com.kms.katalon.core.testobject.TestObjectProperty
-
-import com.kms.katalon.core.mobile.helper.MobileElementCommonHelper
-import com.kms.katalon.core.util.KeywordUtil
-
-import com.kms.katalon.core.webui.exception.WebElementNotFoundException
-
+import com.kms.katalon.core.testobject.TestObject
+import com.kms.katalon.core.webui.keyword.WebUiBuiltInKeywords as WebUI
 import io.cucumber.java.en.And
 import io.cucumber.java.en.Given
 import io.cucumber.java.en.Then
 import io.cucumber.java.en.When
 
-
-
 class ExportDataSteps {
- /**
-* The step definitions below match with Katalon sample Gherkin steps
-*/
-@Given("I want to write a step with {string}")
-def I_want_to_write_a_step_with_name(String name) {
-	println name
-}
 
-@When("I check for the {int} in step")
-def I_check_for_the_value_in_step(int value) {
-	println value
-}
+	private TestObject byTestId(String testId) {
+		TestObject obj = new TestObject(testId)
+		obj.addProperty("css", ConditionType.EQUALS, "[data-testid='${testId}']")
+		return obj
+	}
 
-@Then("I verify the {string} in step")
-def I_verify_the_status_in_step(String status) {
-	println status
-}
+	@Given("the application has a saved profile and ingredient")
+	def prepareInitialData() {
+		// Se a sessão arrancar no /onboarding (IndexedDB vazio), conclui os 3 passos
+		if (WebUI.waitForElementPresent(byTestId("onboarding"), 3, FailureHandling.OPTIONAL)) {
+			// Passo 1 -> Passo 2 (o campo profile-name já vem preenchido com "Casa")
+			WebUI.waitForElementClickable(byTestId("onboarding-next"), 5)
+			WebUI.click(byTestId("onboarding-next"))
 
- 
+			// Passo 2 -> Passo 3
+			WebUI.waitForElementClickable(byTestId("onboarding-next"), 5)
+			WebUI.click(byTestId("onboarding-next"))
+
+			// Passo 3 -> Concluir e guardar perfil
+			WebUI.waitForElementClickable(byTestId("onboarding-finish"), 5)
+			WebUI.click(byTestId("onboarding-finish"))
+		}
+
+		WebUI.waitForElementVisible(byTestId("profile-switcher-toggle"), 10)
+	}
+
+	@And("the user navigates to the Settings view")
+	def navigateToSettings() {
+		WebUI.click(byTestId("profile-switcher-toggle"))
+		WebUI.waitForElementVisible(byTestId("manage-profiles-link"), 5)
+		WebUI.click(byTestId("manage-profiles-link"))
+		WebUI.waitForElementVisible(byTestId("settings-view"), 10)
+	}
+
+	@When("the user requests to export the data to JSON")
+	def exportDataToJson() {
+		WebUI.waitForElementClickable(byTestId("export-json-btn"), 10)
+		WebUI.click(byTestId("export-json-btn"))
+	}
+
+	@Then("the application confirms that the JSON file was generated successfully")
+	def verifyExportConfirmation() {
+		WebUI.waitForElementVisible(byTestId("export-status"), 10)
+		String message = WebUI.getText(byTestId("export-status"))
+		assert message != null && message.trim().length() > 0
+	}
 }
