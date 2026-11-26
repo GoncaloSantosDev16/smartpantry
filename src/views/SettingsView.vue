@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import TagInput from "@/components/TagInput.vue";
+import { exportAllDataToJson } from "@/services/dataExport";
 import { useProfilesStore } from "@/stores/profiles";
 
 const router = useRouter();
@@ -16,6 +17,10 @@ const DIETS = [
 const formOpen = ref(false);
 const editingId = ref(null);
 const saving = ref(false);
+
+const exporting = ref(false);
+const exportStatus = ref("");
+const exportError = ref(false);
 
 const form = reactive({
   name: "",
@@ -86,14 +91,31 @@ async function saveProfile() {
 async function removeProfile(id) {
   await profiles.deleteProfile(id);
 }
+
+async function handleExportJson() {
+  if (exporting.value) return;
+  exporting.value = true;
+  exportError.value = false;
+  exportStatus.value = "";
+  try {
+    const { filename } = await exportAllDataToJson();
+    exportStatus.value = `Cópia de segurança exportada (${filename}).`;
+  } catch (err) {
+    exportError.value = true;
+    exportStatus.value = "Não foi possível exportar os dados para JSON.";
+    console.error("Erro ao exportar dados:", err);
+  } finally {
+    exporting.value = false;
+  }
+}
 </script>
 
 <template>
   <main
-    class="mx-auto min-h-screen max-w-lg p-4 pb-12 sm:p-6"
+    class="mx-auto min-h-screen max-w-lg space-y-8 p-4 pb-12 sm:p-6"
     data-testid="settings-view"
   >
-    <header class="mb-6 flex items-center gap-3">
+    <header class="flex items-center gap-3">
       <button
         type="button"
         class="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -304,6 +326,45 @@ async function removeProfile(id) {
           </div>
         </article>
       </div>
+    </section>
+
+    <section
+      class="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+      data-testid="backup-section"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">
+            Dados e Cópia de Segurança
+          </h2>
+          <p class="text-xs text-gray-500">
+            Transfere uma cópia em JSON com a tua despensa, perfis e
+            preferências
+          </p>
+        </div>
+        <button
+          type="button"
+          class="shrink-0 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
+          :disabled="exporting"
+          data-testid="export-json-btn"
+          @click="handleExportJson"
+        >
+          {{ exporting ? "A exportar..." : "Exportar JSON" }}
+        </button>
+      </div>
+
+      <p
+        v-if="exportStatus"
+        class="rounded-lg px-3 py-2 text-xs font-medium"
+        :class="
+          exportError
+            ? 'bg-red-50 text-red-700'
+            : 'bg-emerald-50 text-emerald-700'
+        "
+        data-testid="export-status"
+      >
+        {{ exportStatus }}
+      </p>
     </section>
   </main>
 </template>
