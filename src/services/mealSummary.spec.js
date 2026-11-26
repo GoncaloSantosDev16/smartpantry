@@ -3,6 +3,7 @@ import { DEMO_RECIPE } from './recipeModel'
 import {
   buildConsumptionSummary,
   convertQuantity,
+  describeConsumption,
   mealSummaryRoute,
   parseUsedQuantity,
   planConsumption,
@@ -158,5 +159,29 @@ describe('mealSummaryRoute (SCRUM-130)', () => {
   it('aponta para a receita guardada ou para a pré-visualização', () => {
     expect(mealSummaryRoute({ id: 7 })).toEqual({ name: 'meal-summary', params: { id: 7 } })
     expect(mealSummaryRoute({ title: 'x' })).toEqual({ name: 'meal-summary-preview' })
+  })
+})
+
+describe('describeConsumption (US-22 / SCRUM-135)', () => {
+  it('mostra o antes e o depois de cada produto e o que acabou', () => {
+    const ops = [{ id: 1, quantity: 0.8 }, { id: 2, remove: true }]
+    expect(describeConsumption(ops, pantry)).toEqual([
+      { name: 'Arroz', unit: 'kg', before: 1, after: 0.8, removed: false },
+      { name: 'Cenoura', unit: 'un', before: 5, after: 0, removed: true },
+    ])
+  })
+
+  it('junta os lotes do mesmo produto', () => {
+    const items = [
+      { id: 10, name: 'Arroz', quantity: 0.1, unit: 'kg' },
+      { id: 11, name: 'Arroz', quantity: 1, unit: 'kg' },
+    ]
+    expect(describeConsumption([{ id: 10, remove: true }, { id: 11, quantity: 0.9 }], items)).toEqual([
+      { name: 'Arroz', unit: 'kg', before: 1.1, after: 0.9, removed: false },
+    ])
+  })
+
+  it('ignora operações de itens desconhecidos', () => {
+    expect(describeConsumption([{ id: 99, remove: true }], pantry)).toEqual([])
   })
 })
