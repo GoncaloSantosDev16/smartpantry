@@ -110,6 +110,7 @@ describe("profiles store", () => {
 
     expect(fresh.defaultProfile.name).toBe("Casa");
   });
+
   // ------------------------------------------------------------------
   // SCRUM-104 — perfil ativo
   // ------------------------------------------------------------------
@@ -207,6 +208,7 @@ describe("profiles store", () => {
       expect(store.activeProfile).toBeNull();
     });
   });
+
   // ------------------------------------------------------------------
   // US-11 — filtros pessoais (SCRUM-120, SCRUM-121, SCRUM-122)
   // ------------------------------------------------------------------
@@ -278,6 +280,76 @@ describe("profiles store", () => {
 
     it("sem perfil ativo, não há restrições", () => {
       expect(useProfilesStore().activeRestrictions.allergies).toEqual([]);
+    });
+  });
+
+  // ------------------------------------------------------------------
+  // US-26 — CRUD de perfis (SCRUM-140)
+  // ------------------------------------------------------------------
+
+  describe("updateProfile e deleteProfile", () => {
+    it("atualiza os dados de um perfil existente no Dexie e na store", async () => {
+      const store = useProfilesStore();
+      const criado = await store.createProfile(data);
+
+      const atualizado = await store.updateProfile(criado.id, {
+        name: "  Família  ",
+        servings: 4,
+        diets: ["vegetarian"],
+        allergies: ["amendoim"],
+        excludedIngredients: ["coentros"],
+      });
+
+      expect(atualizado.name).toBe("Família");
+      expect(atualizado.servings).toBe(4);
+      expect(atualizado.diets).toEqual(["vegetarian"]);
+      expect(atualizado.allergies).toEqual(["amendoim"]);
+      expect(atualizado.excludedIngredients).toEqual(["coentros"]);
+
+      const naBd = await db.profiles.get(criado.id);
+      expect(naBd.name).toBe("Família");
+      expect(naBd.servings).toBe(4);
+    });
+
+    it("devolve null ao tentar atualizar um id inexistente", async () => {
+      const store = useProfilesStore();
+      expect(await store.updateProfile(9999, { name: "Teste" })).toBeNull();
+    });
+
+    it("impede eliminar o único perfil existente", async () => {
+      const store = useProfilesStore();
+      const unico = await store.createProfile(data);
+
+      expect(await store.deleteProfile(unico.id)).toBe(false);
+      expect(store.profiles).toHaveLength(1);
+    });
+
+    it("elimina o perfil ativo/default, promove o seguinte a default e limpa o localStorage", async () => {
+      const store = useProfilesStore();
+      const casa = await store.createProfile(data);
+      const ana = await store.createProfile({
+        ...data,
+        name: "Ana",
+        servings: 1,
+      });
+
+      store.setActiveProfile(casa.id);
+      expect(await store.deleteProfile(casa.id)).toBe(true);
+
+      expect(store.profiles).toHaveLength(1);
+      expect(store.profiles[0].id).toBe(ana.id);
+      expect(store.profiles[0].isDefault).toBe(true);
+      expect(store.activeProfile.id).toBe(ana.id);
+      expect(localStorage.getItem(CHAVE_PERFIL_ATIVO)).toBeNull();
+    });
+
+    it("devolve false ao tentar eliminar um id inexistente", async () => {
+      const store = useProfilesStore();
+      await store.createProfile(data);
+      await store.createProfile({ ...data, name: "Ana" });
+
+      expect(await store.deleteProfile(9999)).toBe(false);
+      expect(store.profiles).toHaveLength(2);
     });
   });
 });
