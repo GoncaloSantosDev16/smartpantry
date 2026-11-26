@@ -4,6 +4,7 @@
 // SCRUM-126 — O botão envia-os para a Store da Lista de Compras.
 // SCRUM-128 — O "+" de cada ingrediente em falta pede para o pôr na despensa.
 // SCRUM-115 — Indicador da % de ingredientes que já existem na despensa.
+// SCRUM-41 / SCRUM-37 — Guardar receita sugerida.
 import { computed, onMounted, ref } from "vue";
 import { missingIngredients } from "@/services/missingIngredients";
 import {
@@ -14,19 +15,18 @@ import { useShoppingListStore } from "@/stores/shoppingList";
 
 const props = defineProps({
   card: { type: Object, required: true },
+  saved: { type: Boolean, default: false },
+  saving: { type: Boolean, default: false },
 });
-const emit = defineEmits(["added-to-shopping-list", "add-to-pantry"]);
+const emit = defineEmits(["added-to-shopping-list", "add-to-pantry", "save"]);
 
 const shopping = useShoppingListStore();
 const sending = ref(false);
 const sendError = ref("");
 
-// Para saber o que já está na lista, mesmo antes de se abrir o carrinho.
 onMounted(() => shopping.load());
 
-// SCRUM-124: ingredientes da receita que não estão na despensa.
 const missing = computed(() => missingIngredients(props.card));
-// Os que ainda não estão na lista por comprar (são esses que o botão envia).
 const toAdd = computed(() =>
   notOnShoppingList(missing.value, shopping.pendingItems),
 );
@@ -47,7 +47,6 @@ async function addMissing() {
   }
 }
 
-// SCRUM-115 — Verde: tens tudo; âmbar: metade ou mais; cinzento: menos de metade.
 const coverageTone = computed(() => {
   if (props.card.percent >= 100) return { text: "text-green-700", bar: "bg-green-500" };
   if (props.card.percent >= 50) return { text: "text-amber-700", bar: "bg-amber-400" };
@@ -73,12 +72,32 @@ const coverageTone = computed(() => {
     />
 
     <div class="flex flex-1 flex-col gap-3 p-4">
-      <h3
-        class="m-0 text-lg font-bold text-gray-800"
-        data-testid="recipe-title"
-      >
-        {{ card.title }}
-      </h3>
+      <div class="flex items-start justify-between gap-2">
+        <h3
+          class="m-0 text-lg font-bold text-gray-800"
+          data-testid="recipe-title"
+        >
+          {{ card.title }}
+        </h3>
+
+        <button
+          v-if="!saved"
+          type="button"
+          data-testid="recipe-save"
+          :disabled="saving"
+          class="shrink-0 rounded-xl border border-[#42b883] px-3 py-1.5 text-xs font-semibold text-[#42b883] transition-colors hover:bg-green-50 active:scale-95 disabled:opacity-50"
+          @click="emit('save', card)"
+        >
+          🔖 Guardar
+        </button>
+        <span
+          v-else
+          data-testid="recipe-saved"
+          class="shrink-0 rounded-xl bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700"
+        >
+          ✓ Guardada
+        </span>
+      </div>
 
       <!-- SCRUM-115: indicador de progresso -->
       <div class="flex flex-col gap-1.5">
@@ -128,7 +147,6 @@ const coverageTone = computed(() => {
           "
         >
           <span v-if="ingredient.inPantry">✓</span>
-          <!-- SCRUM-128: o "+" manda o ingrediente diretamente para a despensa. -->
           <button
             v-else
             type="button"
