@@ -270,3 +270,86 @@ describe("SCRUM-145: carrossel passo a passo (Cook Mode)", () => {
     expect(router.currentRoute.value.name).toBe("meal-summary");
   });
 });
+
+describe("US-15: contador de vezes que a receita foi cozinhada", () => {
+  const guardar = (extra = {}) =>
+    db.recipes.add({
+      ...DEMO_RECIPE,
+      savedAt: "2026-11-26T10:00:00.000Z",
+      timesCooked: 0,
+      ...extra,
+    });
+
+  it('uma receita guardada nunca cozinhada mostra "Ainda não cozinhada"', async () => {
+    const id = await guardar();
+    const { wrapper } = await open(`/receitas/${id}`);
+
+    expect(byId(wrapper, "recipe-times-cooked").text()).toContain(
+      "Ainda não cozinhada",
+    );
+    expect(
+      byId(wrapper, "recipe-times-cooked").attributes("data-count"),
+    ).toBe("0");
+  });
+
+  it("mostra quantas vezes a receita já foi cozinhada", async () => {
+    const id = await guardar({ timesCooked: 2 });
+    const { wrapper } = await open(`/receitas/${id}`);
+
+    expect(byId(wrapper, "recipe-times-cooked").text()).toContain(
+      "Cozinhada 2 vezes",
+    );
+    expect(
+      byId(wrapper, "recipe-times-cooked").attributes("data-count"),
+    ).toBe("2");
+  });
+
+  it("receitas antigas sem contador contam como 0", async () => {
+    const id = await db.recipes.add({
+      ...DEMO_RECIPE,
+      savedAt: "2026-11-01T10:00:00.000Z",
+    });
+    const { wrapper } = await open(`/receitas/${id}`);
+    expect(byId(wrapper, "recipe-times-cooked").text()).toContain(
+      "Ainda não cozinhada",
+    );
+  });
+
+  it("uma receita ainda não guardada não mostra o contador", async () => {
+    const { wrapper } = await open("/receitas/preview", (store) =>
+      store.openPreview(DEMO_RECIPE),
+    );
+    expect(byId(wrapper, "recipe-times-cooked").exists()).toBe(false);
+  });
+
+  it("depois de concluir a refeição (markCooked) o contador sobe", async () => {
+    const id = await guardar();
+    const { wrapper, store, router } = await open(`/receitas/${id}`);
+
+    await store.markCooked(id);
+    await store.markCooked(id);
+    // Volta a abrir a receita (como quando se regressa do resumo)
+    await router.push("/");
+    await router.push(`/receitas/${id}`);
+    await flushPromises();
+
+    expect(byId(wrapper, "recipe-times-cooked").text()).toContain(
+      "Cozinhada 2 vezes",
+    );
+    expect((await db.recipes.get(id)).timesCooked).toBe(2);
+  });
+
+  it("guardar uma receita começa o contador a 0", async () => {
+    const { wrapper } = await open("/receitas/preview", (store) =>
+      store.openPreview(DEMO_RECIPE),
+    );
+    await byId(wrapper, "save-recipe").trigger("click");
+    await vi.waitFor(() =>
+      expect(byId(wrapper, "recipe-times-cooked").exists()).toBe(true),
+    );
+
+    expect(byId(wrapper, "recipe-times-cooked").attributes("data-count")).toBe(
+      "0",
+    );
+  });
+});

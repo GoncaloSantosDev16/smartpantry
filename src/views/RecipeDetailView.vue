@@ -2,6 +2,7 @@
 // US-13: detalhes de uma receita (SCRUM-97) e botão "Guardar" (SCRUM-98).
 //   /recipes/:id      receita já guardada, lida do IndexedDB
 //   /recipes/preview  receita ainda não guardada (ex.: acabada de gerar pela IA)
+// US-15 (SCRUM-43): mostra quantas vezes a receita guardada já foi cozinhada.
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useRecipesStore } from "@/stores/recipes";
@@ -12,6 +13,7 @@ import {
   totalMinutes,
 } from "@/services/recipeModel";
 import { mealSummaryRoute } from "@/services/mealSummary";
+import { formatTimesCooked, timesCookedCount } from "@/services/timesCooked";
 import CookingCarousel from "@/components/CookingCarousel.vue";
 
 const route = useRoute();
@@ -27,6 +29,8 @@ const cooking = ref(false);
 
 const isSaved = computed(() => recipe.value?.id !== undefined);
 const total = computed(() => formatDuration(totalMinutes(recipe.value)));
+// US-15: contador de vezes cozinhada (só faz sentido em receitas guardadas)
+const timesCooked = computed(() => timesCookedCount(recipe.value));
 
 async function loadRecipe() {
   saveError.value = "";
@@ -171,6 +175,18 @@ function goBack() {
             class="font-semibold text-[#33a06f]"
             data-testid="saved-badge"
             >✓ Receita guardada</span
+          >
+          <span
+            v-if="isSaved"
+            class="self-start rounded-full px-3 py-1 text-sm font-semibold"
+            :class="
+              timesCooked > 0
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-slate-100 text-gray-500'
+            "
+            data-testid="recipe-times-cooked"
+            :data-count="timesCooked"
+            >🍳 {{ formatTimesCooked(timesCooked) }}</span
           >
           <button
             v-else

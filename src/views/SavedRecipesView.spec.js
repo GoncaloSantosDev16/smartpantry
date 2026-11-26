@@ -118,3 +118,26 @@ describe('SavedRecipesView', () => {
     expect(byId(wrapper, 'recipes-empty').exists()).toBe(true)
   })
 })
+
+describe('US-15: contador nos cartões das receitas guardadas', () => {
+  it('cada cartão mostra quantas vezes a receita foi cozinhada', async () => {
+    await seed('Nunca feita', '2026-11-01T10:00:00.000Z', { timesCooked: 0 })
+    await seed('Uma vez', '2026-11-02T10:00:00.000Z', { timesCooked: 1 })
+    await seed('Favorita', '2026-11-03T10:00:00.000Z', { timesCooked: 5 })
+    const { wrapper } = await open()
+
+    const contadores = wrapper.findAll('[data-testid="recipe-card-times-cooked"]')
+    expect(contadores.map((c) => c.text())).toEqual([
+      '🍳 Cozinhada 5 vezes',
+      '🍳 Cozinhada 1 vez',
+      '🍳 Ainda não cozinhada',
+    ])
+    expect(contadores.map((c) => c.attributes('data-count'))).toEqual(['5', '1', '0'])
+  })
+
+  it('receitas antigas sem contador mostram "Ainda não cozinhada"', async () => {
+    await seed('Antiga', '2026-11-01T10:00:00.000Z')
+    const { wrapper } = await open()
+    expect(byId(wrapper, 'recipe-card-times-cooked').text()).toContain('Ainda não cozinhada')
+  })
+})
