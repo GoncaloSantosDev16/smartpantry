@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description>SCRUM-50 — BDD: descontar stock da despensa ou saltar (US-22)</description>
+   <name>RunDeductPantryStockFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>5bb199b5-8de0-49ff-8f26-c9c3d0446a56</testCaseGuid>
+</TestCaseEntity>
