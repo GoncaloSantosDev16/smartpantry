@@ -10,6 +10,7 @@ import { useRecipesStore } from '@/stores/recipes'
 import { formatQuantity } from '@/services/recipeModel'
 import {
   buildConsumptionSummary,
+  describeConsumption,
   formatAmount,
   planConsumption,
   validateConsumedLine,
@@ -21,11 +22,12 @@ const pantry = usePantryStore()
 const recipes = useRecipesStore()
 
 const recipe = ref(null)
-const status = ref('loading') // loading | ready | not-found | done
+const status = ref('loading') // loading | ready | not-found | done | skipped
 const lines = ref([])
 const notInPantry = ref([])
 const saving = ref(false)
 const saveError = ref('')
+const changes = ref([]) // US-22: o que mudou na despensa depois de confirmar
 
 const errors = computed(() => Object.fromEntries(lines.value.map((l) => [l.key, validateConsumedLine(l)])))
 const hasErrors = computed(() => Object.values(errors.value).some(Boolean))
@@ -64,12 +66,30 @@ async function confirm() {
   saveError.value = ''
   try {
     const operations = planConsumption(lines.value, pantry.items)
+    changes.value = describeConsumption(operations, pantry.items)
     await pantry.consumeItems(operations)
     await recipes.markCooked(recipe.value.id)
     status.value = 'done'
   } catch (error) {
     console.error('Erro ao atualizar a despensa:', error)
     saveError.value = 'Não foi possível atualizar a despensa. Tenta novamente.'
+  } finally {
+    saving.value = false
+  }
+}
+
+// US-22 / SCRUM-136 — "Saltar": conclui a refeição sem mexer na despensa.
+// Funciona mesmo com quantidades inválidas ou sem ingredientes na despensa.
+async function skip() {
+  if (saving.value) return
+  saving.value = true
+  saveError.value = ''
+  try {
+    await recipes.markCooked(recipe.value.id)
+    status.value = 'skipped'
+  } catch (error) {
+    console.error('Erro ao concluir a refeição:', error)
+    saveError.value = 'Não foi possível concluir a refeição. Tenta novamente.'
   } finally {
     saving.value = false
   }
@@ -86,7 +106,7 @@ const recipeHint = (line) => line.recipeIngredients.map((i) => [formatQuantity(i
 <template>
   <div class="mx-auto max-w-3xl px-4 py-6" data-testid="meal-summary">
     <button
-      v-if="status !== 'done'"
+      v-if="status !== 'done' && status !== 'skipped'"
       type="button"
       class="mb-4 cursor-pointer border-0 bg-transparent p-0 text-sm font-semibold text-gray-500 hover:text-gray-800"
       data-testid="meal-summary-back"
@@ -106,6 +126,29 @@ const recipeHint = (line) => line.recipeIngredients.map((i) => [formatQuantity(i
       <p class="m-0 text-4xl">✅</p>
       <h1 class="m-0 text-2xl font-extrabold text-gray-800">Despensa atualizada</h1>
       <p class="m-0 text-gray-500">Descontámos os ingredientes que usaste em «{{ recipe.title }}».</p>
+      <ul v-if="changes.length" class="m-0 flex w-full list-none flex-col gap-1 p-0 text-left text-sm" data-testid="stock-changes">
+        <li
+          v-for="change in changes"
+          :key="change.name + change.unit"
+          class="flex justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
+          data-testid="stock-change"
+          :data-name="change.name"
+          :data-removed="String(change.removed)"
+        >
+          <span class="font-semibold text-gray-800">{{ change.name }}</span>
+          <span v-if="change.removed" class="font-medium text-red-500">acabou · removido</span>
+          <span v-else class="text-gray-600">
+            {{ formatAmount(change.before) }} → <strong>{{ formatAmount(change.after) }}</strong> {{ change.unit }}
+          </span>
+        </li>
+      </ul>
+      <RouterLink to="/" class="btn-primary no-underline" data-testid="meal-summary-home">Ver despensa</RouterLink>
+    </div>
+
+    <div v-else-if="status === 'skipped'" class="card flex flex-col items-center gap-3 text-center" data-testid="meal-summary-skipped" role="status">
+      <p class="m-0 text-4xl">🍽️</p>
+      <h1 class="m-0 text-2xl font-extrabold text-gray-800">Bom apetite!</h1>
+      <p class="m-0 text-gray-500">A despensa não foi alterada.</p>
       <RouterLink to="/" class="btn-primary no-underline" data-testid="meal-summary-home">Ver despensa</RouterLink>
     </div>
 
@@ -195,6 +238,15 @@ const recipeHint = (line) => line.recipeIngredients.map((i) => [formatQuantity(i
           @click="confirm"
         >
           {{ saving ? 'A atualizar…' : `Confirmar e descontar (${usedCount})` }}
+        </button>
+        <button
+          type="button"
+          class="cursor-pointer rounded-[10px] border-2 border-slate-200 bg-white px-4 py-3 font-semibold text-gray-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="meal-summary-skip"
+          :disabled="saving"
+          @click="skip"
+        >
+          Saltar — não mexer na despensa
         </button>
         <p v-if="saveError" class="m-0 text-sm font-medium text-red-500" role="alert" data-testid="meal-summary-error">
           {{ saveError }}

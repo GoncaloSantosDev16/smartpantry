@@ -173,6 +173,33 @@ export function planConsumption(lines, pantryItems = [], { now = Date.now() } = 
   return operations
 }
 
+/**
+ * US-22 / SCRUM-135 — O que muda na despensa, por produto, para mostrar depois de confirmar.
+ * [{ name, unit, before, after, removed }] (after = 0 e removed = true quando acaba).
+ */
+export function describeConsumption(operations = [], pantryItems = []) {
+  const byId = new Map(pantryItems.map((i) => [i.id, i]))
+  const changes = new Map()
+  for (const op of operations) {
+    const item = byId.get(op.id)
+    if (!item) continue
+    const key = `${normalizeName(item.name)}|${item.unit ?? ''}`
+    if (!changes.has(key)) {
+      const lots = pantryItems.filter((i) => `${normalizeName(i.name)}|${i.unit ?? ''}` === key)
+      const before = round3(lots.reduce((sum, i) => sum + (Number(i.quantity) || 0), 0))
+      changes.set(key, { name: item.name, unit: item.unit ?? '', before, after: before, removedLots: 0, lots: lots.length })
+    }
+    const change = changes.get(key)
+    const left = op.remove ? 0 : op.quantity
+    change.after = round3(change.after - (Number(item.quantity) - left))
+    if (op.remove) change.removedLots++
+  }
+  return [...changes.values()].map(({ removedLots, lots, ...c }) => ({
+    ...c,
+    removed: removedLots === lots,
+  }))
+}
+
 /** SCRUM-130 — Rota do resumo para uma receita (usada no fim da receita / Cook Mode). */
 export function mealSummaryRoute(recipe) {
   return recipe?.id !== undefined

@@ -121,6 +121,10 @@
       <isReuseDriver>false</isReuseDriver>
       <isRun>true</isRun>
       <testCaseId>Test Cases/TestesReceitas/RunTimesCookedFeatures</testCaseId>
+      <guid>f0a94678-6fb3-4d89-b650-cf9cdd007a29</guid>
+      <isReuseDriver>false</isReuseDriver>
+      <isRun>true</isRun>
+      <testCaseId>Test Cases/TestesResumoRefeicao/RunDeductPantryStockFeatures</testCaseId>
       <usingDataBindingAtTestSuiteLevel>false</usingDataBindingAtTestSuiteLevel>
    </testCaseLink>
 </TestSuiteEntity>
