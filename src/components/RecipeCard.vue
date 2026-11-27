@@ -14,6 +14,9 @@ import { useShoppingListStore } from "@/stores/shoppingList";
 
 const props = defineProps({
   card: { type: Object, required: true },
+  // Receita já guardada no livro de receitas / a ser guardada neste momento.
+  saved: { type: Boolean, default: false },
+  saving: { type: Boolean, default: false },
 });
 const emit = defineEmits(["added-to-shopping-list", "add-to-pantry"]);
 
@@ -176,6 +179,25 @@ const coverageTone = computed(() => {
           {{ sendError }}
         </p>
       </template>
+
+      <!-- Guardar a receita nas receitas guardadas (US-13) -->
+      <p
+        v-if="saved"
+        data-testid="recipe-saved"
+        class="m-0 rounded-xl bg-green-50 px-3 py-2 text-center text-sm font-semibold text-green-700"
+      >
+        ✓ Guardada nas receitas
+      </p>
+      <button
+        v-else
+        type="button"
+        data-testid="recipe-save"
+        :disabled="saving"
+        class="rounded-xl bg-[#42b883] px-3 py-2 text-sm font-semibold text-white active:scale-95 disabled:opacity-50"
+        @click="emit('save', card)"
+      >
+        {{ saving ? "A guardar…" : "📖 Guardar receita" }}
+      </button>
 
       <details v-if="card.steps.length" class="mt-auto text-sm">
         <summary
