@@ -4,10 +4,12 @@
 //   SCRUM-117: pesquisa no Spoonacular            -> discoverRecipes
 //   SCRUM-118: resultados em grelha               -> toRecipeCards + RecipeCard
 //   SCRUM-128: o "+" de um ingrediente em falta põe-no na despensa -> addToPantry
+//   SCRUM-41 / SCRUM-37: guardar sugestão no livro de receitas -> saveRecipe
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { db } from "@/db";
 import { useProfilesStore } from "@/stores/profiles";
 import { usePantryStore } from "@/stores/pantry";
+import { useRecipesStore } from "@/stores/recipes";
 import { useRecipeGenerator } from "@/composables/useRecipeGenerator";
 import { discoverRecipes } from "@/services/recipeDiscovery";
 import { buildPantryIngredientList } from "@/services/pantryIngredients";
@@ -21,18 +23,23 @@ import ShoppingListDrawer from "@/components/ShoppingListDrawer.vue";
 
 const profiles = useProfilesStore();
 const pantryStore = usePantryStore();
+const savedRecipes = useRecipesStore();
+
+// US-13: guardar uma receita sugerida nas receitas guardadas.
+const savingRecipeIds = ref([]);
+const saveError = ref("");
+const recipesStore = useRecipesStore();
 
 const pantry = ref([]);
 const pantryLoaded = ref(false);
 const pantryError = ref(false);
 
-// SCRUM-128: ingredientes (nomes do Spoonacular) postos na despensa depois da pesquisa.
 const addedToPantry = ref([]);
 const addingToPantry = new Set();
 const pantryAddError = ref("");
 const isShoppingListOpen = ref(false);
+const savingRecipeIds = ref(new Set());
 
-// O composable só gere loading/erro/cancelamento; a resposta fica em `result`.
 const {
   loading,
   error,
@@ -59,13 +66,50 @@ const noResults = computed(
 );
 const canSearch = computed(() => pantry.value.length > 0 && !loading.value);
 
+const savedExternalIds = computed(() => {
+  const ids = new Set();
+  for (const r of recipesStore.recipes) {
+    if (r.externalId !== undefined && r.externalId !== null) {
+      ids.add(String(r.externalId));
+    }
+  }
+  return ids;
+});
+
+function isRecipeSaved(card) {
+  return savedExternalIds.value.has(String(card.id));
+}
+
+async function handleSaveRecipe(card) {
+  const key = String(card.id);
+  if (savingRecipeIds.value.has(key) || isRecipeSaved(card)) return;
+
+  const next = new Set(savingRecipeIds.value);
+  next.add(key);
+  savingRecipeIds.value = next;
+
+  try {
+    const raw =
+      result.value?.recipes?.find((r) => String(r.id) === key) ?? card;
+    await recipesStore.saveRecipe(raw, { source: "spoonacular" });
+  } catch (err) {
+    console.error("Erro ao guardar receita:", err);
+  } finally {
+    const after = new Set(savingRecipeIds.value);
+    after.delete(key);
+    savingRecipeIds.value = after;
+  }
+}
+
 async function readPantry() {
   pantry.value = buildPantryIngredientList(await db.pantryItems.toArray());
 }
 
 onMounted(async () => {
+  // Para os cartões das receitas já guardadas mostrarem "Guardada".
+  savedRecipes.load({ forcar: true });
   try {
-    await readPantry();
+    await Promise.all([readPantry(), recipesStore.load({ forcar: true })]);
   } catch (err) {
     pantryError.value = true;
     console.error("Erro ao carregar a despensa:", err);
@@ -76,8 +120,6 @@ onMounted(async () => {
 
 onBeforeUnmount(cancel);
 
-// SCRUM-128 — Guarda o ingrediente na despensa (pela store, para o dashboard ficar
-// atualizado) e marca-o como "tens" em todos os cartões, sem nova pesquisa.
 async function addToPantry(ingredient) {
   const item = toPantryItem(ingredient?.name);
   if (!item || addingToPantry.has(ingredient.name)) return;
@@ -95,9 +137,36 @@ async function addToPantry(ingredient) {
   }
 }
 
+// Receitas do Spoonacular já guardadas (mesma origem e mesmo id).
+const savedSpoonacularIds = computed(
+  () =>
+    new Set(
+      savedRecipes.recipes
+        .filter((r) => r.source === "spoonacular")
+        .map((r) => r.externalId),
+    ),
+);
+const isRecipeSaved = (card) => savedSpoonacularIds.value.has(card.id);
+const isRecipeSaving = (card) => savingRecipeIds.value.includes(card.id);
+
+// Guarda a receita original do Spoonacular (com as quantidades numéricas), não o cartão.
+async function saveRecipe(card) {
+  const raw = result.value?.recipes?.find((r) => r.id === card.id);
+  if (!raw || isRecipeSaved(card) || isRecipeSaving(card)) return;
+  savingRecipeIds.value.push(card.id);
+  saveError.value = "";
+  try {
+    await savedRecipes.saveRecipe(raw, { source: "spoonacular" });
+  } catch (err) {
+    console.error("Erro ao guardar a receita:", err);
+    saveError.value = `Não foi possível guardar «${card.title}».`;
+  } finally {
+    savingRecipeIds.value = savingRecipeIds.value.filter((id) => id !== card.id);
+  }
+}
+
 function search() {
   if (!canSearch.value) return;
-  // US-11: restrições do perfil ativo, vazias se os filtros estiverem desligados.
   generate({
     ingredients: pantry.value,
     profile: profiles.activeRequestProfile,
@@ -204,6 +273,15 @@ function search() {
       {{ pantryAddError }}
     </p>
 
+    <p
+      v-if="saveError"
+      data-testid="recipes-save-error"
+      class="mb-4 text-red-600"
+      role="alert"
+    >
+      {{ saveError }}
+    </p>
+
     <section
       v-if="!loading && cards.length > 0"
       data-testid="recipes-grid"
@@ -213,7 +291,13 @@ function search() {
         v-for="card in cards"
         :key="card.id"
         :card="card"
+        :saved="isRecipeSaved(card)"
+        :saving="isRecipeSaving(card)"
         @add-to-pantry="addToPantry"
+        @save="saveRecipe"
+        :saving="savingRecipeIds.has(String(card.id))"
+        @add-to-pantry="addToPantry"
+        @save="handleSaveRecipe"
       />
     </section>
   </div>
