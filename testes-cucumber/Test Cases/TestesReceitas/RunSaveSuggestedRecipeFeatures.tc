@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestCaseEntity>
+   <description></description>
+   <name>RunSaveSuggestedRecipeFeatures</name>
+   <tag></tag>
+   <comment></comment>
+   <recordOption>OTHER</recordOption>
+   <testCaseGuid>a783f5f7-ac45-474e-8828-9bf8beb4edc5</testCaseGuid>
+</TestCaseEntity>
