@@ -23,6 +23,11 @@ import ShoppingListDrawer from "@/components/ShoppingListDrawer.vue";
 
 const profiles = useProfilesStore();
 const pantryStore = usePantryStore();
+const savedRecipes = useRecipesStore();
+
+// US-13: guardar uma receita sugerida nas receitas guardadas.
+const savingRecipeIds = ref([]);
+const saveError = ref("");
 const recipesStore = useRecipesStore();
 
 const pantry = ref([]);
@@ -101,6 +106,8 @@ async function readPantry() {
 }
 
 onMounted(async () => {
+  // Para os cartões das receitas já guardadas mostrarem "Guardada".
+  savedRecipes.load({ forcar: true });
   try {
     await Promise.all([readPantry(), recipesStore.load({ forcar: true })]);
   } catch (err) {
@@ -127,6 +134,34 @@ async function addToPantry(ingredient) {
     pantryAddError.value = `Não foi possível adicionar ${item.name} à despensa.`;
   } finally {
     addingToPantry.delete(ingredient.name);
+  }
+}
+
+// Receitas do Spoonacular já guardadas (mesma origem e mesmo id).
+const savedSpoonacularIds = computed(
+  () =>
+    new Set(
+      savedRecipes.recipes
+        .filter((r) => r.source === "spoonacular")
+        .map((r) => r.externalId),
+    ),
+);
+const isRecipeSaved = (card) => savedSpoonacularIds.value.has(card.id);
+const isRecipeSaving = (card) => savingRecipeIds.value.includes(card.id);
+
+// Guarda a receita original do Spoonacular (com as quantidades numéricas), não o cartão.
+async function saveRecipe(card) {
+  const raw = result.value?.recipes?.find((r) => r.id === card.id);
+  if (!raw || isRecipeSaved(card) || isRecipeSaving(card)) return;
+  savingRecipeIds.value.push(card.id);
+  saveError.value = "";
+  try {
+    await savedRecipes.saveRecipe(raw, { source: "spoonacular" });
+  } catch (err) {
+    console.error("Erro ao guardar a receita:", err);
+    saveError.value = `Não foi possível guardar «${card.title}».`;
+  } finally {
+    savingRecipeIds.value = savingRecipeIds.value.filter((id) => id !== card.id);
   }
 }
 
@@ -238,6 +273,15 @@ function search() {
       {{ pantryAddError }}
     </p>
 
+    <p
+      v-if="saveError"
+      data-testid="recipes-save-error"
+      class="mb-4 text-red-600"
+      role="alert"
+    >
+      {{ saveError }}
+    </p>
+
     <section
       v-if="!loading && cards.length > 0"
       data-testid="recipes-grid"
@@ -248,6 +292,9 @@ function search() {
         :key="card.id"
         :card="card"
         :saved="isRecipeSaved(card)"
+        :saving="isRecipeSaving(card)"
+        @add-to-pantry="addToPantry"
+        @save="saveRecipe"
         :saving="savingRecipeIds.has(String(card.id))"
         @add-to-pantry="addToPantry"
         @save="handleSaveRecipe"
